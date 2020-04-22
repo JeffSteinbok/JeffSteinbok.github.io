@@ -1,0 +1,569 @@
+/* Font Families */
+@font-face {
+  font-family: "Segoe UI Web Light";
+  font-style: normal;
+  font-weight: 100;
+  src: local("Segoe UI Light"), local("Segoe UI"), local("HelveticaNeue-Light");
+  unicode-range: U+0-FF,U+300-36F; }
+
+@font-face {
+  font-family: "Segoe UI Web Regular";
+  font-style: normal;
+  font-weight: normal;
+  src: local("Segoe UI"), local("Helvetica Neue");
+  unicode-range: U+0-FF,U+300-36F; }
+
+@font-face {
+  font-family: "Segoe UI Web Semibold";
+  font-style: normal;
+  font-weight: bold;
+  src: local("Segoe UI Semibold"), local("Segoe UI Bold"), local("Segoe UI"), local("HelveticaNeue-Medium");
+  unicode-range: U+0-FF,U+300-36F; }
+
+/* Core CSS */
+html {
+  background-color: #fff;
+  margin: 0;
+  padding: 0;
+  height: 100%; }
+
+body {
+  font-size: 14px;
+  font-family: "Segoe UI","Segoe UI Web Regular","Segoe UI Symbol","Helvetica Neue","BBAlpha Sans","S60 Sans",Arial,"sans-serif";
+  background-color: #fff;
+  color: #000;
+  margin: 0;
+  padding: 0;
+  height: 100%; }
+
+button {
+  cursor: pointer; }
+
+/* Base Styles to inherit from */
+div#startPage div.title, div#hostStartPage div.title, div#hostStartPage div.gameCode, div#jeffpardyBoard div.jeffpardyCategory, div#jeffpardyBoard div.jeffpardyClue, div#jeffpardyBoard div.jeffpardyIntermission div.title, div#jeffpardyBoard div.jeffpardyEnd div.title, div#playerPage div.title, div#playerPage div.gameCode, div#buzzerView div.buzzerViewTitle, div#buzzerView div.buzzerViewTitleGameCode, div#scoreboard .scoreboardEntry, .topSection {
+  color: white;
+  text-transform: uppercase;
+  text-shadow: 2px 2px black;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  font-stretch: ultra-condensed; }
+
+/* Start Page */
+/* ------------------------------------------------------ */
+div#startPage {
+  padding: 10px;
+  background-color: #060CE9;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  align-content: center; }
+
+div#startPage a {
+  font-size: 2em;
+  color: white; }
+
+div#startPage div.title {
+  height: 15%;
+  background-color: #060CE9;
+  font-size: 4em;
+  text-align: center;
+  margin: 2px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center; }
+
+/* Host Start Page */
+/* --------------------------------------------------*/
+div#hostStartPage {
+  padding: 10px;
+  background-color: #060CE9;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  align-content: center; }
+
+div#hostStartPage div {
+  text-align: center; }
+
+div#hostStartPage a {
+  font-size: 1.5em;
+  color: white; }
+
+div#hostStartPage button {
+  font-size: 2em; }
+
+div#hostStartPage div.title {
+  background-color: #060CE9;
+  font-size: 4em;
+  text-align: center;
+  margin: 2px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 15%; }
+
+div#hostStartPage div.gameCode {
+  background-color: #060CE9;
+  font-size: 2em;
+  text-align: center;
+  margin: 2px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center; }
+
+div#introVideo {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: black;
+  height: 100%; }
+
+div#introVideo video {
+  width: 100%; }
+
+div#jeffpardyBoardFrame {
+  width: 100%;
+  flex-grow: 1;
+  background-color: grey;
+  padding: 20px;
+  box-sizing: border-box; }
+
+div#jeffpardyBoardInnerFrame {
+  width: 100%;
+  height: 100%;
+  background-color: darkgrey;
+  padding: 5px;
+  box-sizing: inherit;
+  min-width: 1100px; }
+
+div#jeffpardyBoard {
+  width: 100%;
+  height: 100%;
+  background-color: black;
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  padding: 10px;
+  box-sizing: inherit; }
+
+div#jeffpardyBoard div.jeffpardyBoardClues {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1.5fr 1fr 1fr 1fr 1fr 1fr;
+  width: 100%; }
+
+div#jeffpardyBoard div.jeffpardyCategory {
+  background-color: #060CE9;
+  font-size: 2em;
+  text-align: center;
+  margin: 2px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center; }
+
+div#jeffpardyBoard div.jeffpardyClue {
+  box-sizing: inherit;
+  margin: 2px;
+  position: relative;
+  font-size: 3.5em;
+  box-sizing: inherit;
+  background-color: #060CE9;
+  box-sizing: border-box; }
+
+div#jeffpardyBoard div.jeffpardyClue div {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center; }
+
+div#jeffpardyBoard div.jeffpardyClue a {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  color: yellow;
+  text-decoration: none;
+  align-items: center;
+  justify-content: center; }
+
+div#jeffpardyBoard div.jeffpardyClue a:hover {
+  background-color: #030786; }
+
+div#jeffpardyBoard div.jeffpardyClue a:hover a.asked:hover {
+  background-color: #060CE9; }
+
+div#jeffpardyBoard div.jeffpardyActiveClue {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%; }
+
+div#jeffpardyBoard div.jeffpardyActiveClue .header {
+  background-color: darkblue;
+  font-size: 1.5em;
+  flex-grow: 0;
+  text-align: center;
+  color: white;
+  padding: 5px; }
+
+div#jeffpardyBoard div.jeffpardyActiveClue .clue {
+  flex-grow: 1;
+  background-color: #060CE9;
+  color: white;
+  font-size: 4em;
+  display: flex;
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  text-align: center; }
+
+div#jeffpardyBoard div.jeffpardyActiveClue .question {
+  flex-grow: 1;
+  background-color: #060CE9;
+  color: white;
+  font-size: 3em;
+  display: flex;
+  position: relative;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  text-align: center; }
+
+div#jeffpardyBoard div.timer {
+  height: 10px;
+  width: 100%;
+  display: flex;
+  flex-direction: row; }
+
+div#jeffpardyBoard div.timer div {
+  flex-grow: 1;
+  background-color: #060CE9; }
+
+div#jeffpardyBoard div.timer div.lit {
+  background-color: white; }
+
+div#jeffpardyBoard div.jeffpardyIntermission, div#jeffpardyBoard div.jeffpardyEnd {
+  background-color: #060CE9;
+  color: white;
+  flex-direction: column;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  display: flex;
+  height: 100%;
+  width: 100%;
+  font-size: 2em; }
+
+div#jeffpardyBoard div.jeffpardyIntermission div.title, div#jeffpardyBoard div.jeffpardyEnd div.title {
+  font-size: 3em; }
+
+div#jeffpardyBoard div.jeffpardyIntermission button, div#jeffpardyBoard div.jeffpardyEnd button {
+  font-size: 2em; }
+
+/*----------------------------------------------------------------------------*/
+div#playerPage {
+  padding: 10px;
+  background-color: #060CE9;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  align-content: center; }
+
+div#playerPage div.title {
+  background-color: #060CE9;
+  font-size: 4em;
+  text-align: center;
+  margin: 2px;
+  padding-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center; }
+
+div#playerPage div.gameCode {
+  background-color: #060CE9;
+  font-size: 2em;
+  text-align: center;
+  margin: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center; }
+
+div#playerPage div.gameCodeEntry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; }
+
+div#playerPage div.gameCodeEntry input {
+  text-align: center;
+  font-size: 1.5em;
+  text-transform: uppercase; }
+
+div#playerPage div.gameCodeEntry button {
+  font-size: 1.5em;
+  padding: 5px 20px 5px 20px; }
+
+div#playerPageMain {
+  padding: 10px;
+  background-color: #060CE9;
+  color: white;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  flex-direction: row;
+  height: 100%;
+  box-sizing: border-box; }
+
+div#buzzerView div.buzzerViewTitle {
+  font-size: 3em;
+  grid-column-start: span 2;
+  text-align: center; }
+
+div#buzzerView div.buzzerViewTitleGameCode {
+  grid-column-start: span 2;
+  text-align: center; }
+
+div#playerPage div.buzzerCurrentUserView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center; }
+
+div#playerPage div.buzzerCurrentUserView h1 {
+  margin-bottom: 0px; }
+
+div#playerPage div.buzzerCurrentUserView h2 {
+  margin-top: 0px; }
+
+div.buzzerRegistration {
+  font-size: 1.5em; }
+
+div.buzzerRegistration input[type="text"] {
+  font-size: 0.8em; }
+
+div#playerPage div.buzzerCurrentUserView div.buzzerRegistration button {
+  font-size: 1em;
+  padding: 5px 20px 5px 20px; }
+
+div#playerPage div.buzzerCurrentUserView div.playerName {
+  font-size: 1.5em;
+  margin-bottom: 20px; }
+
+div#playerPage div.buzzerCurrentUserView div.buzzedInUser {
+  margin-top: 20px;
+  padding: 10px 30px 10px 30px;
+  background-color: orangered; }
+
+div#playerPage div.buzzerCurrentUserView div.buzzedInUser.buzzedInWinner {
+  background-color: green; }
+
+div#playerPage div.buzzerCurrentUserView div.buzzedInUser div.buzzedInUserName {
+  font-size: 2em; }
+
+button#buzzer {
+  margin-top: 20px;
+  height: 200px;
+  width: 200px;
+  font-size: 2em;
+  color: white;
+  border-radius: 50%;
+  box-shadow: 0px 0px 20px rgba(50, 50, 50, 0.5); }
+
+button#buzzer:focus {
+  outline: 0; }
+
+button#buzzer.active {
+  border: 1px solid green;
+  background-color: green; }
+
+button#buzzer.active:hover {
+  border: 1px solid #004d00;
+  background-color: #004d00; }
+
+button#buzzer.active:active {
+  border: 1px solid #001a00;
+  background-color: #001a00; }
+
+button#buzzer.inactive {
+  border: 1px solid grey;
+  background-color: grey; }
+
+button#buzzer.buzzed {
+  border: 1px solid blue;
+  background-color: blue; }
+
+button#buzzer.lockedout {
+  border: 1px solid orangered;
+  background-color: orangered; }
+
+div#scoreboard {
+  height: 130px;
+  box-sizing: border-box;
+  background-color: #2b0f01;
+  display: flex;
+  flex-direction: row;
+  padding-top: 10px;
+  padding-bottom: 10px; }
+
+div#scoreboard div#hostControls {
+  width: 250px;
+  padding-left: 10px;
+  display: grid;
+  color: white;
+  font-weight: bold;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto 1fr;
+  row-gap: 4px; }
+
+div#scoreboard div#hostControls button {
+  margin-right: 4px;
+  background-color: green;
+  border-color: darkgreen; }
+
+div#scoreboard div#hostControls button:disabled {
+  background-color: grey;
+  border-color: darkgrey; }
+
+div#scoreboard .scoreEntries {
+  display: flex;
+  flex-grow: 1;
+  flex-direction: row;
+  align-items: left;
+  text-align: center;
+  padding-left: 30px; }
+
+div#scoreboard .scoreboardEntry {
+  width: 200px;
+  background-color: #060CE9;
+  box-shadow: 0px 0px 20px #323232;
+  border: 2px solid black;
+  margin-right: 10px; }
+
+div#scoreboard .scoreboardEntry .buzzerIndicator {
+  height: 15px;
+  background-color: black; }
+
+div#scoreboard .scoreboardEntry .buzzerIndicator.buzzerActive {
+  background-color: white; }
+
+div#scoreboard .scoreboardEntry .buzzerIndicator.buzzedIn {
+  background-color: red; }
+
+div#scoreboard .scoreboardEntry .teamName {
+  font-size: 2em;
+  border-bottom: solid 5px black; }
+
+div#scoreboard .scoreboardEntry .score {
+  font-size: 2.5em;
+  padding-top: 5px;
+  padding-bottom: 5px; }
+
+div.buzzerUserListView {
+  display: flex;
+  flex-direction: column;
+  align-items: center; }
+
+div.buzzerUserListView ul.playerList {
+  list-style: none;
+  padding-left: 0px;
+  text-align: center; }
+
+div.buzzerUserListView ul.playerList li {
+  font-weight: bold; }
+
+div.buzzerUserListView ul.playerList ul {
+  padding-left: 0; }
+
+div.buzzerUserListView ul.playerList ul li {
+  font-weight: normal; }
+
+div.hostCheatSheetRound {
+  page-break-after: always; }
+
+div.hostCheatSheetRound div.hostCheatSheetClues {
+  display: grid;
+  background-color: black;
+  -webkit-print-color-adjust: exact;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
+  width: 100%;
+  box-sizing: border-box;
+  grid-column-gap: 2px;
+  grid-row-gap: 2px;
+  padding: 2px;
+  font-size: 9pt; }
+
+div.hostCheatSheetRound div.hostCheatSheetCategory {
+  text-align: center;
+  background-color: white;
+  padding: 2px;
+  margin-bottom: 2px; }
+
+div.hostCheatSheetRound div.hostCheatSheetCategory div.title {
+  font-weight: bold; }
+
+div.hostCheatSheetRound div.hostCheatSheetClue {
+  text-align: center;
+  background-color: white;
+  padding: 2px; }
+
+div.hostCheatSheetRound div.hostCheatSheetClue div.value {
+  font-weight: bold; }
+
+div.hostCheatSheetRound div.hostCheatSheetClue div.clue {
+  border-bottom: 1px solid black; }
+
+/* main layout
+----------------------------------------------------------*/
+div.topPageNormal {
+  display: flex;
+  flex-direction: column;
+  height: 100%; }
+
+/*   topSection container ===========================  */
+.topSection {
+  padding-top: 5px;
+  height: 70px;
+  color: white;
+  background-color: #2b0f01;
+  display: flex;
+  flex-direction: column;
+  align-content: center; }
+
+.topSection .title {
+  font-size: 2.5em;
+  text-align: center; }
+
+.topSection .gameCode {
+  font-size: 1em;
+  text-align: center; }
+
+/*   middleSection container =========================  */
+.middleSection {
+  flex-grow: 1;
+  display: flex; }
+
+.pageContent {
+  flex-grow: 1;
+  overflow-x: hidden;
+  width: calc(100vw);
+  display: flex;
+  flex-direction: column; }
