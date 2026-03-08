@@ -1,1 +1,241 @@
-"Hello World" 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jeff Steinbok</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem 5rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 4px solid #30363d;
+      object-fit: cover;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #e6edf3;
+      letter-spacing: -0.5px;
+    }
+
+    .tagline {
+      font-size: 1rem;
+      color: #8b949e;
+      text-align: center;
+      max-width: 480px;
+    }
+
+    /* ── Social links ── */
+    .social-links {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 3.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+
+    .btn:hover { transform: translateY(-2px); }
+
+    .btn-github {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+    }
+    .btn-github:hover { background: #30363d; border-color: #8b949e; }
+
+    .btn-linkedin {
+      background: #0a66c2;
+      border: 1px solid #0a66c2;
+      color: #fff;
+    }
+    .btn-linkedin:hover { background: #0958a5; border-color: #0958a5; }
+
+    /* ── Projects section ── */
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #e6edf3;
+      margin-bottom: 1.25rem;
+      align-self: flex-start;
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 1rem;
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 1.25rem 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      border-color: #58a6ff;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 24px rgba(88, 166, 255, 0.12);
+    }
+
+    .card-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #58a6ff;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: #8b949e;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .card-arrow {
+      font-size: 0.8rem;
+      color: #58a6ff;
+      align-self: flex-end;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 4rem;
+      font-size: 0.8rem;
+      color: #484f58;
+    }
+
+    footer a { color: #484f58; }
+    footer a:hover { color: #8b949e; }
+
+    /* ── SVG icons ── */
+    .icon { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <img
+      class="avatar"
+      src="https://github.com/JeffSteinbok.png"
+      alt="Jeff Steinbok profile photo"
+    />
+    <h1>Jeff Steinbok</h1>
+    <p class="tagline">Software engineer · Open-source builder · Home-automation tinkerer</p>
+  </div>
+
+  <!-- Social links -->
+  <div class="social-links">
+    <a class="btn btn-github" href="https://github.com/JeffSteinbok" target="_blank" rel="noopener noreferrer">
+      <!-- GitHub mark -->
+      <svg class="icon" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+          0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+          -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+          .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+          -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09
+          2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82
+          2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01
+          2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      GitHub
+    </a>
+    <a class="btn btn-linkedin" href="https://linkedin.com/in/jeffsteinbok" target="_blank" rel="noopener noreferrer">
+      <!-- LinkedIn icon -->
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037
+          -1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046
+          c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337
+          7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782
+          13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542
+          C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729
+          C24 .774 23.2 0 22.222 0h.003z"/>
+      </svg>
+      LinkedIn
+    </a>
+  </div>
+
+  <!-- Projects -->
+  <div class="section-title">Featured Projects</div>
+  <div class="projects-grid">
+
+    <a class="card" href="https://github.com/JeffSteinbok/hass-dreo" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">🌬️</div>
+      <div class="card-title">hass-dreo</div>
+      <div class="card-desc">Dreo Smart Device Integration for Home Assistant. Control fans, air purifiers &amp; more.</div>
+      <div class="card-arrow">View on GitHub →</div>
+    </a>
+
+    <a class="card" href="https://github.com/JeffSteinbok/ghcpCliDashboard" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">🤖</div>
+      <div class="card-title">Copilot Dashboard</div>
+      <div class="card-desc">Dashboard to track your currently running GitHub Copilot active and recent sessions.</div>
+      <div class="card-arrow">View on GitHub →</div>
+    </a>
+
+    <a class="card" href="https://jeffsteinbok.github.io/octo-docs/" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">🐙</div>
+      <div class="card-title">Octo Docs</div>
+      <div class="card-desc">Public documentation for the OpenClaw modular AI assistant framework.</div>
+      <div class="card-arrow">Visit Site →</div>
+    </a>
+
+  </div>
+
+  <footer>
+    <a href="https://github.com/JeffSteinbok" target="_blank" rel="noopener noreferrer">github.com/JeffSteinbok</a>
+  </footer>
+
+</body>
+</html>
