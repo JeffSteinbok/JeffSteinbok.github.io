@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carapace — OpenClaw Plugin Ecosystem</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 3rem 1rem 5rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      font-weight: 700;
+      color: #e6edf3;
+      letter-spacing: -0.5px;
+    }
+
+    .tagline {
+      font-size: 1rem;
+      color: #8b949e;
+      text-align: center;
+      max-width: 560px;
+      line-height: 1.6;
+    }
+
+    .tagline a { color: #58a6ff; }
+
+    .back-link {
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .back-link a {
+      color: #58a6ff;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .back-link a:hover { text-decoration: underline; }
+
+    /* ── Section titles ── */
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #e6edf3;
+      margin-bottom: 1.25rem;
+      width: 100%;
+      max-width: 1000px;
+    }
+
+    .section-desc {
+      max-width: 1000px;
+      width: 100%;
+      margin-bottom: 1.25rem;
+      color: #8b949e;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    /* ── Grid ── */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+      width: 100%;
+      max-width: 1000px;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 1.25rem 1.25rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: inherit;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+      border-color: #58a6ff;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 24px rgba(88, 166, 255, 0.12);
+    }
+
+    .card-icon {
+      font-size: 1.6rem;
+      line-height: 1;
+    }
+
+    .card-icon img {
+      width: 2rem;
+      height: 2rem;
+      object-fit: contain;
+    }
+
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #58a6ff;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: #8b949e;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .card-badge {
+      font-size: 0.8rem;
+    }
+
+    .card-arrow {
+      font-size: 0.8rem;
+      color: #58a6ff;
+      align-self: flex-end;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 4rem;
+      font-size: 0.8rem;
+      color: #484f58;
+    }
+
+    footer a { color: #484f58; text-decoration: none; }
+    footer a:hover { color: #8b949e; }
+  </style>
+</head>
+<body>
+
+  <div class="back-link"><a href="index.html">← Back to jeffsteinbok.github.io</a></div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <img src="assets/images/carapace.png" alt="Carapace logo" />
+    <h1>Carapace</h1>
+    <p class="tagline">
+      An SDK and a growing collection of plugins for
+      <a href="https://openclaw.ai" target="_blank" rel="noopener noreferrer">OpenClaw</a>
+      — a modular AI assistant framework that connects language models to real-world services.
+    </p>
+  </div>
+
+  <!-- Getting Started -->
+  <div class="section-title">🚀 Getting Started</div>
+  <p class="section-desc">
+    Build your own OpenClaw plugin in minutes. Start with the SDK and template, then look at the existing plugins for inspiration.
+  </p>
+  <div class="projects-grid">
+
+    <a class="card" href="https://github.com/JeffSteinbok/carapace-plugin-sdk" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">📦</div>
+      <div class="card-title">carapace-plugin-sdk</div>
+      <div class="card-desc">The core SDK — types, helpers, CLI runtime and generator. Install it as a dependency in your plugin.</div>
+      <div class="card-badge"><img src="https://img.shields.io/npm/v/carapace-plugin-sdk?style=flat&logo=npm" alt="npm version" /></div>
+      <div class="card-arrow">View on GitHub →</div>
+    </a>
+
+    <a class="card" href="https://github.com/JeffSteinbok/carapace-plugin-template" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">🧩</div>
+      <div class="card-title">carapace-plugin-template</div>
+      <div class="card-desc">GitHub template repo — click "Use this template" to scaffold a new plugin with build, test, and CI already wired up.</div>
+      <div class="card-arrow">Use Template →</div>
+    </a>
+
+  </div>
+
+  <!-- Plugins -->
+  <div class="section-title">🔌 Plugins</div>
+  <p class="section-desc">
+    Ready-to-use plugins that connect OpenClaw to real-world services.
+  </p>
+  <div class="projects-grid">
+
+    <a class="card" href="https://github.com/JeffSteinbok/carapace-stock-quotes" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">📈</div>
+      <div class="card-title">carapace-stock-quotes</div>
+      <div class="card-desc">Stock, ETF &amp; mutual fund quotes powered by Yahoo Finance and Finnhub.</div>
+      <div class="card-arrow">View on GitHub →</div>
+    </a>
+
+    <a class="card" href="https://github.com/JeffSteinbok/carapace-mail-runtime" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">📬</div>
+      <div class="card-title">carapace-mail-runtime</div>
+      <div class="card-desc">Provider-agnostic mail processing runtime — rule engine, action registry, and dispatch pipeline.</div>
+      <div class="card-arrow">View on GitHub →</div>
+    </a>
+
+    <a class="card" href="https://github.com/JeffSteinbok/carapace-package-tracking" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">📦</div>
+      <div class="card-title">carapace-package-tracking</div>
+      <div class="card-desc">Package tracking across UPS, FedEx, USPS, and Amazon.</div>
+      <div class="card-arrow">View on GitHub →</div>
+    </a>
+
+  </div>
+
+  <!-- More from OpenClaw -->
+  <div class="section-title">🐙 More from OpenClaw</div>
+  <div class="projects-grid">
+
+    <a class="card" href="https://github.com/JeffSteinbok/openclaw-hub" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon">🦞</div>
+      <div class="card-title">openclaw-hub</div>
+      <div class="card-desc">Additional OpenClaw plugins &amp; services — Spotify, Home Assistant, Outlook, calendars &amp; more.</div>
+      <div class="card-arrow">Browse Plugins →</div>
+    </a>
+
+    <a class="card" href="https://jeffsteinbok.github.io/octo-docs/" target="_blank" rel="noopener noreferrer">
+      <div class="card-icon"><img src="assets/images/Octo_small_trimmed.png" alt="Octo logo" /></div>
+      <div class="card-title">Octo Docs</div>
+      <div class="card-desc">See how Jeff has his personal AI assistant configured with these plugins.</div>
+      <div class="card-arrow">View Docs →</div>
+    </a>
+
+  </div>
+
+  <footer>
+    <a href="https://github.com/JeffSteinbok" target="_blank" rel="noopener noreferrer">github.com/JeffSteinbok</a>
+  </footer>
+
+</body>
+</html>
