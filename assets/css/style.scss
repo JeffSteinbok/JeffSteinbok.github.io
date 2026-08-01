@@ -1,0 +1,188 @@
+---
+---
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #0d1117;
+  color: #c9d1d9;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem 5rem;
+}
+
+/* ── Hero ── */
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 2.5rem;
+}
+
+.avatar {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 4px solid #30363d;
+  object-fit: cover;
+}
+
+h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #e6edf3;
+  letter-spacing: -0.5px;
+}
+
+.tagline {
+  font-size: 1rem;
+  color: #8b949e;
+  text-align: center;
+  max-width: 480px;
+}
+
+/* ── Social links ── */
+.social-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 3.5rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.btn:hover { transform: translateY(-2px); }
+
+.btn-github {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+}
+.btn-github:hover { background: #30363d; border-color: #8b949e; }
+
+.btn-linkedin {
+  background: #0a66c2;
+  border: 1px solid #0a66c2;
+  color: #fff;
+}
+.btn-linkedin:hover { background: #0958a5; border-color: #0958a5; }
+
+.btn-photography {
+  background: #4CAF50;
+  border: 1px solid #4CAF50;
+  color: #fff;
+}
+.btn-photography:hover { background: #3d8b40; border-color: #3d8b40; }
+
+.btn-discord {
+  background: #5865F2;
+  border: 1px solid #5865F2;
+  color: #fff;
+}
+.btn-discord:hover { background: #4752c4; border-color: #4752c4; }
+
+/* ── Projects section ── */
+.section-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #e6edf3;
+  margin-bottom: 1.25rem;
+  width: 100%;
+  max-width: 1000px;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: 1000px;
+}
+
+.card {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 1.25rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: #58a6ff;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(88, 166, 255, 0.12);
+}
+
+.card-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.card-icon img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #58a6ff;
+}
+
+.card-desc {
+  font-size: 0.85rem;
+  color: #8b949e;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.card-arrow {
+  font-size: 0.8rem;
+  color: #58a6ff;
+  align-self: flex-end;
+}
+
+/* ── Section spacing when stacked ── */
+.section-title + .section-title,
+.projects-grid + .section-title { margin-top: 2.5rem; }
+.section-intro {
+  max-width: 1000px;
+  width: 100%;
+  margin-bottom: 1.25rem;
+  color: #8b949e;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* ── Footer ── */
+footer {
+  margin-top: 4rem;
+  font-size: 0.8rem;
+  color: #484f58;
+}
+
+footer a { color: #484f58; }
+footer a:hover { color: #8b949e; }
+
+/* ── SVG icons ── */
+.icon { width: 18px; height: 18px; fill: currentColor; flex-shrink: 0; }

@@ -1,0 +1,82 @@
+# Homepage content. Each section renders a title, optional HTML intro, and a
+# grid of cards. Add a project by appending a card entry — no HTML editing.
+#
+# card fields:
+#   url       link target
+#   external  true -> opens in a new tab with rel=noopener
+#   icon_img  path to an image icon (mutually exclusive with icon_emoji)
+#   icon_emoji  emoji used as the icon
+#   title / desc / arrow  card text
+
+sections:
+  - title: Featured Projects
+    cards:
+      - url: https://github.com/JeffSteinbok/hass-dreo
+        external: true
+        icon_img: assets/images/hass-dreo-icon.png
+        title: hass-dreo
+        desc: Dreo Smart Device Integration for Home Assistant. Control fans, air purifiers &amp; more.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/jeffpardy
+        external: true
+        icon_img: assets/images/jeffpardy-favicon.ico
+        title: Jeffpardy
+        desc: A trivia game platform built with TypeScript, inspired by the classic TV quiz show.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/jeffopolydeal
+        external: true
+        icon_img: assets/images/jeffopolydeal-favicon.ico
+        title: Jeffopoly Deal
+        desc: A real-time multiplayer Monopoly Deal card game built with React, ASP.NET Core &amp; SignalR.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/reMarkableSync
+        external: true
+        icon_img: assets/images/remarkablesync-logo.png
+        title: reMarkableSync
+        desc: Sync reMarkable to PDF and MarkDown via either USB or Wifi.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/obsidian-onedrive
+        external: true
+        icon_img: assets/images/obsidian-onedrive-icon.png
+        title: obsidian-onedrive
+        desc: Sync your Obsidian vault with OneDrive Personal/Consumer.
+        arrow: View on GitHub →
+
+  - title: 🐙 OpenClaw / Octo
+    intro: >
+      Jeff uses <strong style="color: #e6edf3;">Octo</strong> as his personal AI assistant, built on
+      <a href="https://openclaw.ai" style="color: #58a6ff;" target="_blank" rel="noopener noreferrer">OpenClaw</a>
+      and powered by <strong style="color: #e6edf3;">Carapace</strong> plugins.
+    cards:
+      - url: carapace.html
+        icon_img: assets/images/carapace.png
+        title: Carapace
+        desc: SDK, template, and a growing collection of OpenClaw plugins — stock quotes, mail, package tracking &amp; more.
+        arrow: Explore Carapace →
+      - url: https://jeffsteinbok.github.io/octo-docs/
+        external: true
+        icon_img: assets/images/Octo_small_trimmed.png
+        title: Octo Docs
+        desc: How Jeff has Octo configured — plugins, channels &amp; more.
+        arrow: View Docs →
+      - url: https://github.com/JeffSteinbok/openclaw-hub
+        external: true
+        icon_emoji: 🦞
+        title: openclaw-hub
+        desc: More OpenClaw plugins &amp; services from Jeff's assistant.
+        arrow: Browse Plugins →
+
+  - title: Other Projects / Work in Progress
+    cards:
+      - url: https://github.com/JeffSteinbok/agenteye
+        external: true
+        icon_img: assets/images/agenteye-logo.png
+        title: Agent Eye
+        desc: Dashboard to track your currently running GitHub Copilot active and recent sessions.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/hass-uiprotectalarms
+        external: true
+        icon_emoji: 🔔
+        title: hass-uiprotectalarms
+        desc: HomeAssistant Plugin for Enabling/Disabling Unifi Protect Alarms.
+        arrow: View on GitHub →

@@ -1,0 +1,10 @@
+title: Jeff Steinbok
+description: Software engineering manager · Open-source builder · Home-automation tinkerer
+url: "https://jeffsteinbok.github.io"
+
+# Nothing to exclude from processing beyond build/tooling files.
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - vendor
