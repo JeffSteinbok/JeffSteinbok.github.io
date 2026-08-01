@@ -19,7 +19,7 @@ nav:
   - label: Run your own
     url: "#run-your-own-controller"
   - label: Labels
-    url: "#labels"
+    url: "#stages--labels"
 ---
 
 **Puppets is a fully server-side automation harness that turns GitHub issues into merged
@@ -101,31 +101,23 @@ stateDiagram-v2
     Filed --> [*] : closed / won't fix
 ```
 
-### What each stage does
+## Stages &amp; labels
 
-| Stage | What happens |
-|---|---|
-| **Triage** | When an issue is filed, a lightweight, non-AI check looks for the essentials (a description, steps to reproduce, version, logs). If something's missing, the item is labelled *needs info* with a friendly comment. As soon as the author supplies enough detail, that label clears itself. |
-| **Approval — human gate** | A maintainer approves the item. The automation confirms the approver is allowed to, then proceeds. |
-| **Implementation** | The Copilot coding agent is assigned and given any repository-specific guidance, then writes the change and opens a pull request. |
-| **In review** | The pull request is tracked to completion. A ready pull request whose checks are green is automatically taken out of draft so it surfaces for the human. If its branch falls behind the base branch, it's brought up to date; if it develops a conflict, the agent loops on its own branch to resolve it, escalating to a human only if it can't. |
-| **Completion** | When the pull request merges under the configured merge policy, the item is marked *done* and the issue closes. |
+State is carried by a small set of `puppets:*` labels — one active at a time. Each label
+*is* a lifecycle stage, so re-running the reconciler is always safe: it re-derives where
+each item is from its label and picks up where it left off. Maintainers only ever apply two
+by hand; the automation manages the rest.
 
-## Labels
-
-State is carried by a small set of `puppets:*` labels — one active at a time. Maintainers
-only ever apply two by hand; the automation manages the rest.
-
-| Label | Meaning |
-|---|---|
-| `puppets:needs-info` | Missing details; the author needs to add them (clears automatically once enough detail is present). |
-| `puppets:approved` | **Human gate.** Approved to be worked on. *Applied by a maintainer.* |
-| `puppets:claimed` | Picked up; the coding agent is assigned and implementing. |
-| `puppets:in-review` | A pull request is open and being tracked through review and merge. |
-| `puppets:needs-work` | The pull request hit a conflict; the agent is resolving it. |
-| `puppets:needs-human` | A genuine human decision is needed. *Can be applied by a maintainer to push an item back.* |
-| `puppets:done` | The pull request merged and the issue closed. |
-| `puppets:no-auto` | Hard opt-out; Puppets leaves the item alone entirely. |
+| Label | Stage | What happens | Applied by |
+|---|---|---|---|
+| `puppets:needs-info` | Triage | A lightweight, non-AI check looks for the essentials (description, steps to reproduce, version, logs). If something's missing, the item is labelled with a friendly comment; the label clears itself once the author supplies enough detail. | Automatic |
+| `puppets:approved` | **Approval — human gate** | A maintainer approves the item; the automation re-verifies the approver actually has write/triage access before anything proceeds. This gate is the heart of the security model. | **Maintainer** |
+| `puppets:claimed` | Implementation | The Copilot coding agent is assigned, given any repository-specific guidance, writes the change, and opens a pull request. | Automatic |
+| `puppets:in-review` | In review | The pull request is tracked to completion — taken out of draft once its checks are green, and kept up to date when its branch falls behind the base. | Automatic |
+| `puppets:needs-work` | In review (conflict) | The pull request hit a merge conflict; the agent loops on its own branch to resolve it. | Automatic |
+| `puppets:needs-human` | Escalation | A genuine human decision is needed (e.g. a conflict the agent can't resolve). | Automatic — or a **maintainer** to push an item back |
+| `puppets:done` | Completion | The pull request merged under the configured merge policy; the item is marked done and the issue closes. | Automatic |
+| `puppets:no-auto` | Opt-out | Hard opt-out; Puppets leaves the item alone entirely. | Maintainer |
 
 The only two a maintainer adds by hand: **`puppets:approved`** (go) and
 **`puppets:needs-human`** (stop / push back). Everything else is managed automatically.
@@ -183,7 +175,11 @@ present-but-malformed the reconciler **skips that repo** rather than guessing.
 ## Run your own controller
 
 Puppets can be copied into a controller repository without creating or depending on a
-separate Puppets project. Download these three workflow files into `.github/workflows/`:
+separate Puppets project.
+
+[**Explore the complete canonical example with syntax highlighting →**](explorer.html)
+
+Download the three workflow files into `.github/workflows/`:
 
 1. [**Download the canonical `puppets-controller.yml` example**](downloads/puppets-controller.yml)
    — your schedule and troupe configuration.
@@ -191,6 +187,10 @@ separate Puppets project. Download these three workflow files into `.github/work
    engine.
 3. [`puppets-bootstrap-labels.yml`](downloads/puppets-bootstrap-labels.yml) — the label
    bootstrapper used by the engine.
+
+Then download [`puppets-reconcile.js`](downloads/puppets-reconcile.js) into
+`.github/scripts/`. The workflow files contain only configuration and orchestration; the
+reconciliation implementation lives in this JavaScript module.
 
 Edit `puppets-controller.yml` with your GitHub owner, repository names, and the logins
 allowed to apply `puppets:approved`. Then create a `PUPPETS_TOKEN` Actions secret in the
@@ -209,7 +209,7 @@ repository. It needs:
 - **Pull requests: read and write** on managed repositories, to track pull requests, update
   branches, and move completed drafts to ready-for-review.
 
-Enable the Copilot coding agent in each managed repository, commit the three files, and run
+Enable the Copilot coding agent in each managed repository, commit the four files, and run
 **Puppets Lifecycle** manually with `dry_run` enabled before relying on the schedule.
 Notifications are intentionally deployment-specific: the reusable engine exposes
 `waiting_count` and `waiting_message` outputs so the controller can send them through any
