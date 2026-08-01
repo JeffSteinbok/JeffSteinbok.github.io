@@ -52,6 +52,15 @@
 .card-icon { font-size: 1.6rem; line-height: 1; }
 .card-icon img { width: 2rem; height: 2rem; object-fit: contain; }
 
+/* Optional backdrop chip for logos that lack their own background
+   (e.g. a white glyph on transparency, invisible on a light card). */
+.card-icon--chip {
+  display: inline-flex;
+  padding: 0.35rem;
+  border-radius: 10px;
+  background: var(--chip, #2d333b);
+}
+
 .card-title { font-size: 1rem; font-weight: 700; color: $accent; }
 .card-desc { font-size: 0.85rem; color: $muted; line-height: 1.5; flex: 1; }
 .card-badge { font-size: 0.8rem; }

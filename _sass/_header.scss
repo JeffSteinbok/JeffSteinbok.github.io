@@ -18,7 +18,7 @@
 /* Push page content below the fixed bar. */
 body.has-header { padding-top: 4.5rem; }
 
-/* JS monogram logo. */
+/* Site logo = favicon, matching the browser tab. */
 .site-logo {
   display: inline-flex;
   align-items: center;
@@ -28,15 +28,18 @@ body.has-header { padding-top: 4.5rem; }
   border-radius: 8px;
   border: 1px solid $border;
   background: $card-bg;
-  color: $heading;
-  font-weight: 800;
-  font-size: 0.95rem;
-  letter-spacing: 0.5px;
   text-decoration: none;
   flex-shrink: 0;
-  transition: border-color 0.2s, color 0.2s;
+  overflow: hidden;
+  transition: border-color 0.2s;
 }
-.site-logo:hover { border-color: $accent; color: $accent; }
+.site-logo img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
+}
+.site-logo:hover { border-color: $accent; }
 
 /* Optional per-page top-nav, injected via front matter. */
 .site-nav {
@@ -74,9 +77,9 @@ body.has-header { padding-top: 4.5rem; }
 .theme-toggle:hover { border-color: $accent; color: $accent; }
 .theme-toggle .icon { width: 18px; height: 18px; }
 
-/* Show the icon that represents the action: moon in light mode, sun in dark. */
-:root[data-theme="light"] .theme-toggle .icon-sun,
-:root[data-theme="dark"]  .theme-toggle .icon-moon { display: none; }
+/* Show the icon for the CURRENT mode: sun in light, moon in dark. */
+:root[data-theme="light"] .theme-toggle .icon-moon,
+:root[data-theme="dark"]  .theme-toggle .icon-sun { display: none; }
 
 /* Floating toggle on the homepage (no header bar there). */
 .theme-toggle-float {

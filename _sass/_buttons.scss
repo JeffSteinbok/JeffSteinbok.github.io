@@ -21,11 +21,11 @@
 .btn:hover { transform: translateY(-2px); }
 
 .btn-github {
-  background: #21262d;
-  border: 1px solid $border;
-  color: $text;
+  background: #24292f;
+  border: 1px solid #24292f;
+  color: #fff;
 }
-.btn-github:hover { background: $border; border-color: $muted; }
+.btn-github:hover { background: #1b1f24; border-color: #1b1f24; }
 
 .btn-linkedin {
   background: #0a66c2;

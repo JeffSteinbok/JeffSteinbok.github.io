@@ -10,7 +10,9 @@ Global header bar for all pages except the homepage.
   Right:  theme toggle
 {%- endcomment -%}
 <header class="site-header">
-  <a class="site-logo" href="{{ '/' | relative_url }}" aria-label="Home — jeffsteinbok.github.io">JS</a>
+  <a class="site-logo" href="{{ '/' | relative_url }}" aria-label="Home — jeffsteinbok.github.io">
+    <img src="{{ '/favicon.ico' | relative_url }}" alt="jeffsteinbok.github.io" />
+  </a>
   {% if page.nav %}
   <nav class="site-nav" aria-label="Page navigation">
     {% for item in page.nav %}
