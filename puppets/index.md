@@ -1,13 +1,25 @@
 ---
-layout: default
+layout: doc
 title: Puppets — gated issue → PR automation
 permalink: /puppets/
+hero_image: /assets/images/puppets.svg
+heading: Puppets
+tagline: Gated issue → PR automation across a fleet of repositories
+back_link: Back to jeffsteinbok.github.io
+back_link_url: /
 mermaid: true
+nav:
+  - label: Why
+    url: "#why-it-exists"
+  - label: How it works
+    url: "#how-it-works"
+  - label: Lifecycle
+    url: "#the-lifecycle"
+  - label: Build your own
+    url: "#build-your-own"
+  - label: Labels
+    url: "#labels"
 ---
-
-<div class="doc" markdown="1">
-
-# Puppets
 
 **Puppets is a fully server-side automation harness that turns GitHub issues into merged
 changes — end to end, across an entire fleet of repositories — with a human at the two
@@ -113,6 +125,173 @@ only ever apply two by hand; the automation manages the rest.
 The only two a maintainer adds by hand: **`puppets:approved`** (go) and
 **`puppets:needs-human`** (stop / push back). Everything else is managed automatically.
 
+## Build your own
+
+Puppets is **entirely centralized**. Everything lives in one **controller repository** that
+you own (private is fine); the repositories it manages need **no workflow, no config file,
+and no footprint of their own** — they join the fleet simply by being named in the
+controller's list. To stand up your own instance you add two workflow files and one token to
+the controller repo.
+
+### 1. The fleet list
+
+Every managed repository is named in a `REPOS` block. This is the only thing you edit to add
+or remove a repo from the pipeline. Keep it identical in both workflows below.
+
+```yaml
+env:
+  # One repo per line (owner is set in the script). Add a repo here — that's all
+  # it takes to bring it under management. No files are added to the repo itself.
+  REPOS: |
+    your-repo-a
+    your-repo-b
+```
+
+### 2. `.github/workflows/puppets-lifecycle.yml`
+
+The central reconciler. It runs on a schedule (or on demand), reads each issue's `puppets:*`
+label to determine its state, performs deterministic triage, verifies the approval gate, and
+only then assigns the Copilot coding agent. Re-running it is always safe — it re-derives
+state from labels and continues.
+
+```yaml
+name: Puppets Lifecycle
+
+on:
+  schedule:
+    - cron: "0 8 * * *"        # daily
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Report transitions without changing issues"
+        type: boolean
+        default: false
+      max_issues_per_repo:
+        description: "Max approved issues to assign per repo per run"
+        type: string
+        default: "1"
+
+permissions:
+  contents: read
+
+env:
+  REPOS: |
+    your-repo-a
+    your-repo-b
+
+jobs:
+  # Ensure the shared puppets:* label vocabulary exists in every managed repo.
+  bootstrap-labels:
+    uses: ./.github/workflows/puppets-bootstrap-labels.yml
+    with:
+      dry_run: ${{ inputs.dry_run || false }}
+    secrets: inherit
+
+  reconcile:
+    needs: bootstrap-labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reconcile issue lifecycle
+        uses: actions/github-script@v9
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          MAX_ISSUES_PER_REPO: ${{ inputs.max_issues_per_repo || '1' }}
+        with:
+          # Fine-grained PAT with cross-repo access (see "The token" below).
+          github-token: ${{ secrets.PUPPETS_PAT }}
+          script: |
+            const owner = "your-github-username";
+            const repos = `${process.env.REPOS || ""}`
+              .trim().split("\n").map((r) => r.trim()).filter(Boolean);
+            // For each repo: read issues, derive state from puppets:* labels,
+            // triage new items, verify Gate 1 (puppets:approved was applied by a
+            // user with write/triage access), then assign the Copilot coding agent
+            // to approved items and advance open PRs. Never merges.
+            for (const repo of repos) {
+              // ...reconciler logic...
+            }
+```
+
+> **Assigning Copilot from a workflow:** the coding agent is added with the GraphQL
+> `replaceActorsForAssignable` mutation using the bot login `copilot-swe-agent`. (The REST
+> "add assignees" endpoint silently ignores Copilot.)
+
+### 3. `.github/workflows/puppets-bootstrap-labels.yml`
+
+Idempotently creates/updates the `puppets:*` label set in every managed repo, so the
+reconciler has a vocabulary to drive. Safe to re-run: existing labels are reconciled, missing
+ones created. This is what keeps managed repos zero-config.
+
+```yaml
+name: Puppets Bootstrap Labels
+
+on:
+  workflow_call:
+    inputs:
+      dry_run: { type: boolean, default: false }
+  workflow_dispatch:
+    inputs:
+      dry_run: { type: boolean, default: false }
+
+env:
+  REPOS: |
+    your-repo-a
+    your-repo-b
+
+jobs:
+  bootstrap-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Upsert puppets label set
+        uses: actions/github-script@v9
+        with:
+          github-token: ${{ secrets.PUPPETS_PAT }}
+          script: |
+            const owner = "your-github-username";
+            const repos = `${process.env.REPOS || ""}`
+              .trim().split("\n").map((r) => r.trim()).filter(Boolean);
+            const LABELS = [
+              { name: "puppets:needs-info",  color: "D4C5F9", description: "Missing repro/logs/version." },
+              { name: "puppets:approved",    color: "0E8A16", description: "GATE 1: approved to work." },
+              { name: "puppets:claimed",     color: "C2E0C6", description: "Coding agent is implementing." },
+              { name: "puppets:in-review",   color: "006B75", description: "PR open; awaiting the Merge click." },
+              { name: "puppets:needs-work",  color: "E99695", description: "PR hit a conflict; agent resolving." },
+              { name: "puppets:needs-human", color: "B60205", description: "A human decision is needed." },
+              { name: "puppets:done",        color: "6A737D", description: "PR merged, issue closed. Terminal." },
+              { name: "puppets:no-auto",     color: "000000", description: "Hard opt-out: never touch this item." },
+            ];
+            for (const repo of repos) {
+              const existing = new Map();
+              for (const l of await github.paginate(github.rest.issues.listLabelsForRepo, { owner, repo, per_page: 100 }))
+                existing.set(l.name, l);
+              for (const spec of LABELS) {
+                const cur = existing.get(spec.name);
+                if (!cur) await github.rest.issues.createLabel({ owner, repo, ...spec });
+                else if (cur.color.toLowerCase() !== spec.color.toLowerCase() || (cur.description || "") !== spec.description)
+                  await github.rest.issues.updateLabel({ owner, repo, ...spec });
+              }
+            }
+```
+
+### 4. The token
+
+Both workflows authenticate with a single secret, `PUPPETS_PAT`, set on the controller repo
+(**Settings → Secrets and variables → Actions**). Use a fine-grained personal access token
+scoped to your managed repositories with:
+
+- **Issues:** read &amp; write — to triage, label, comment, and assign.
+- **Pull requests:** read &amp; write — to track and advance the coding agent's PRs.
+- **Contents:** read — to inspect branches.
+
+The token is **never granted merge rights** — Gate 2 is a human clicking **Merge** in the
+GitHub UI, by design.
+
+### That's the whole install
+
+- **Controller repo:** the two workflow files above + the `PUPPETS_PAT` secret.
+- **Managed repos:** nothing. They're onboarded by adding a line to `REPOS`; the label
+  bootstrap gives them the vocabulary automatically.
+
 ## Staying informed
 
 Puppets never spams. Instead, it posts a periodic digest that surfaces exactly what needs a
@@ -132,5 +311,3 @@ human:
 - **No automatic merges.** No job is ever granted the ability to merge; a human action is
   the only path to *done*.
 - **Opt-out is absolute.** `puppets:no-auto` takes an item completely out of scope.
-
-</div>
