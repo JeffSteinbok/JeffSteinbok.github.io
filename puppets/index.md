@@ -2,11 +2,10 @@
 layout: doc
 title: Puppets — gated issue → PR automation
 permalink: /puppets/
-hero_image: /assets/images/puppets.svg
+hero_image: /puppets/puppetslogo.png
+header_logo: /puppets/puppetslogo.png
 heading: Puppets
 tagline: Gated issue → PR automation across a fleet of repositories
-back_link: Back to jeffsteinbok.github.io
-back_link_url: /
 mermaid: true
 nav:
   - label: Why
