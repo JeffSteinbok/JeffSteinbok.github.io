@@ -108,16 +108,16 @@ State is carried by a small set of `puppets:*` labels — one active at a time. 
 each item is from its label and picks up where it left off. Maintainers only ever apply two
 by hand; the automation manages the rest.
 
-| Label | Stage | What happens | Applied by |
+| Stage | Label | What happens | Applied by |
 |---|---|---|---|
-| `puppets:needs-info` | Triage | A lightweight, non-AI check looks for the essentials (description, steps to reproduce, version, logs). If something's missing, the item is labelled with a friendly comment; the label clears itself once the author supplies enough detail. | Automatic |
-| `puppets:approved` | **Approval — human gate** | A maintainer approves the item; the automation re-verifies the approver actually has write/triage access before anything proceeds. This gate is the heart of the security model. | **Maintainer** |
-| `puppets:claimed` | Implementation | The Copilot coding agent is assigned, given any repository-specific guidance, writes the change, and opens a pull request. | Automatic |
-| `puppets:in-review` | In review | The pull request is tracked to completion — taken out of draft once its checks are green, and kept up to date when its branch falls behind the base. | Automatic |
-| `puppets:needs-work` | In review (conflict) | The pull request hit a merge conflict; the agent loops on its own branch to resolve it. | Automatic |
-| `puppets:needs-human` | Escalation | A genuine human decision is needed (e.g. a conflict the agent can't resolve). | Automatic — or a **maintainer** to push an item back |
-| `puppets:done` | Completion | The pull request merged under the configured merge policy; the item is marked done and the issue closes. | Automatic |
-| `puppets:no-auto` | Opt-out | Hard opt-out; Puppets leaves the item alone entirely. | Maintainer |
+| Triage | `puppets:needs-info` | A lightweight, non-AI check looks for the essentials (description, steps to reproduce, version, logs). If something's missing, the item is labelled with a friendly comment; the label clears itself once the author supplies enough detail. | Automatic |
+| **Approval — human gate** | `puppets:approved` | A maintainer approves the item; the automation re-verifies the approver actually has write/triage access before anything proceeds. This gate is the heart of the security model. | **Maintainer** |
+| Implementation | `puppets:claimed` | The Copilot coding agent is assigned, given any repository-specific guidance, writes the change, and opens a pull request. | Automatic |
+| In review | `puppets:in-review` | The pull request is tracked to completion — taken out of draft once its checks are green, and kept up to date when its branch falls behind the base. | Automatic |
+| In review (conflict) | `puppets:needs-work` | The pull request hit a merge conflict; the agent loops on its own branch to resolve it. | Automatic |
+| Escalation | `puppets:needs-human` | A genuine human decision is needed (e.g. a conflict the agent can't resolve). | Automatic — or a **maintainer** to push an item back |
+| Completion | `puppets:done` | The pull request merged under the configured merge policy; the item is marked done and the issue closes. | Automatic |
+| Opt-out | `puppets:no-auto` | Hard opt-out; Puppets leaves the item alone entirely. | Maintainer |
 
 The only two a maintainer adds by hand: **`puppets:approved`** (go) and
 **`puppets:needs-human`** (stop / push back). Everything else is managed automatically.
