@@ -20,8 +20,6 @@ nav:
     url: "#run-your-own-controller"
   - label: Source browser
     url: "/puppets/explorer.html"
-  - label: Labels
-    url: "#stages--labels"
 ---
 
 **Puppets is a fully server-side automation harness that turns GitHub issues into merged
