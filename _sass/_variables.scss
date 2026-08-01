@@ -1,0 +1,48 @@
+// Site palette — themeable via CSS custom properties.
+// Dark is the default; `data-theme="light"` on <html> switches every page and
+// every pushed sub-site. SCSS vars below just alias the custom properties, so
+// all partials keep using $bg, $text, etc. unchanged.
+
+:root,
+:root[data-theme="dark"] {
+  --bg:            #0d1117;
+  --text:          #c9d1d9;
+  --heading:       #e6edf3;
+  --muted:         #8b949e;
+  --accent:        #58a6ff;
+  --border:        #30363d;
+  --border-subtle: #21262d;
+  --card-bg:       #161b22;
+  --card-bg-alt:   #0f141a;
+  --footer:        #484f58;
+}
+
+:root[data-theme="light"] {
+  --bg:            #ffffff;
+  --text:          #1f2328;
+  --heading:       #1f2328;
+  --muted:         #656d76;
+  --accent:        #0969da;
+  --border:        #d0d7de;
+  --border-subtle: #eaeef2;
+  --card-bg:       #f6f8fa;
+  --card-bg-alt:   #ffffff;
+  --footer:        #8c959f;
+}
+
+$bg:            var(--bg);
+$text:          var(--text);
+$heading:       var(--heading);
+$muted:         var(--muted);
+$accent:        var(--accent);
+$border:        var(--border);
+$border-subtle: var(--border-subtle);
+$card-bg:       var(--card-bg);
+$card-bg-alt:   var(--card-bg-alt);
+$footer:        var(--footer);
+
+$font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+$font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+$content-max: 1000px;
+$prose-max:   820px;

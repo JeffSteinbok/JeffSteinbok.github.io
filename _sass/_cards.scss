@@ -1,0 +1,58 @@
+/* ── Sections ── */
+.section-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: $heading;
+  margin-bottom: 1.25rem;
+  width: 100%;
+  max-width: $content-max;
+}
+
+.section-intro,
+.section-desc {
+  max-width: $content-max;
+  width: 100%;
+  margin-bottom: 1.25rem;
+  color: $muted;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Section spacing when stacked */
+.section-title + .section-title,
+.projects-grid + .section-title { margin-top: 2.5rem; }
+
+/* ── Grid + cards ── */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  width: 100%;
+  max-width: $content-max;
+}
+
+.card {
+  background: $card-bg;
+  border: 1px solid $border;
+  border-radius: 12px;
+  padding: 1.25rem 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.card:hover {
+  border-color: $accent;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 24px rgba(88, 166, 255, 0.12);
+}
+
+.card-icon { font-size: 1.6rem; line-height: 1; }
+.card-icon img { width: 2rem; height: 2rem; object-fit: contain; }
+
+.card-title { font-size: 1rem; font-weight: 700; color: $accent; }
+.card-desc { font-size: 0.85rem; color: $muted; line-height: 1.5; flex: 1; }
+.card-badge { font-size: 0.8rem; }
+.card-arrow { font-size: 0.8rem; color: $accent; align-self: flex-end; }

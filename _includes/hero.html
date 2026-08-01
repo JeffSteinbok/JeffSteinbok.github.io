@@ -1,0 +1,12 @@
+{%- comment -%}
+Shared hero. Driven by page front matter:
+  hero_image        path or URL to the hero image (optional)
+  hero_image_class  "avatar" (round) or "hero-logo" (contain); default hero-logo
+  heading           big title (defaults to page.title)
+  tagline           sub-text (may contain HTML/links)
+{%- endcomment -%}
+<div class="hero">
+  {% if page.hero_image %}<img class="{{ page.hero_image_class | default: 'hero-logo' }}" src="{% if page.hero_image contains '://' %}{{ page.hero_image }}{% else %}{{ page.hero_image | relative_url }}{% endif %}" alt="{{ page.heading | default: page.title }}" />{% endif %}
+  <h1>{{ page.heading | default: page.title }}</h1>
+  {% if page.tagline %}<p class="tagline">{{ page.tagline }}</p>{% endif %}
+</div>

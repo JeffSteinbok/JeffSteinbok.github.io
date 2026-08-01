@@ -1,0 +1,115 @@
+/* ── Global header bar (all pages except homepage) ── */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 1.25rem;
+  background: color-mix(in srgb, $bg 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid $border-subtle;
+}
+
+/* Push page content below the fixed bar. */
+body.has-header { padding-top: 4.5rem; }
+
+/* JS monogram logo. */
+.site-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid $border;
+  background: $card-bg;
+  color: $heading;
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s;
+}
+.site-logo:hover { border-color: $accent; color: $accent; }
+
+/* Optional per-page top-nav, injected via front matter. */
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1;
+  overflow-x: auto;
+}
+.site-nav a {
+  color: $muted;
+  text-decoration: none;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+.site-nav a:hover { color: $heading; }
+
+/* Theme toggle button (in header and floating on homepage). */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border-radius: 8px;
+  border: 1px solid $border;
+  background: $card-bg;
+  color: $text;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.2s, color 0.2s;
+}
+.theme-toggle:hover { border-color: $accent; color: $accent; }
+.theme-toggle .icon { width: 18px; height: 18px; }
+
+/* Show the icon that represents the action: moon in light mode, sun in dark. */
+:root[data-theme="light"] .theme-toggle .icon-sun,
+:root[data-theme="dark"]  .theme-toggle .icon-moon { display: none; }
+
+/* Floating toggle on the homepage (no header bar there). */
+.theme-toggle-float {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+}
+.theme-toggle-float .theme-toggle { margin-left: 0; }
+
+/* ── Copy button on doc code blocks ── */
+.doc pre.has-copy { position: relative; }
+.doc pre .copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.72rem;
+  font-family: $font-sans;
+  color: $muted;
+  background: $card-bg-alt;
+  border: 1px solid $border;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.2s, border-color 0.2s;
+}
+.doc pre.has-copy:hover .copy-btn,
+.doc pre .copy-btn:focus { opacity: 1; }
+.doc pre .copy-btn:hover { color: $accent; border-color: $accent; }
+
+/* Anchor targets (used by the injected top-nav) clear the fixed header. */
+html { scroll-behavior: smooth; }
+body.has-header .doc h1,
+body.has-header .doc h2,
+body.has-header .doc h3 { scroll-margin-top: 72px; }
