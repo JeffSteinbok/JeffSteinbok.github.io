@@ -9,21 +9,37 @@ mermaid: true
 
 # Puppets
 
-**Puppets** is a gated, cloud-native automation that moves a GitHub issue through its
-whole life — from *filed* to *merged change* — while keeping a human in control at the two
-decisions that matter: **what gets worked on**, and **what gets merged**.
+**Puppets is a fully server-side automation harness that turns GitHub issues into merged
+changes — end to end, across an entire fleet of repositories — with a human at the two
+decisions that matter.**
 
-It pairs GitHub's Copilot coding agent with GitHub Actions so the AI does the writing and a
-person does the deciding. Nothing is analyzed, implemented, or merged automatically without
-an explicit human go-ahead.
+The whole system runs in the cloud. A single central controller reaches into every
+repository it manages, reads each issue's **labels as state**, and drives it through its
+lifecycle: triage → approval → implementation → review → merge. **GitHub's Copilot coding
+agent does the writing** — it's assigned to approved issues and opens real pull requests —
+while GitHub Actions provides the compute. There's nothing to install per repository and no
+local process to babysit; a repo joins simply by being added to the controller's list.
+
+**Issue labels are the interface.** Instead of a bespoke database or UI, Puppets encodes the
+entire workflow in a small set of `puppets:*` labels. Moving an issue forward — or holding it
+back — is just a label change, which means the whole pipeline is legible, auditable, and
+controllable straight from the GitHub issue view you already use.
+
+**A human owns the two gates.** Filed issues are untrusted input, so nothing is worked on
+until a maintainer *approves* it, and nothing ever merges until a person clicks **Merge**.
+Everything in between is automated; those two decisions never are.
 
 ## Why it exists
 
 The starting point was a fire-and-forget script that assigned an AI agent to issues in one
-shot — no plan, no human gate, no pull-request loop. Puppets replaces that with a
-**stateful, reviewable lifecycle**:
+shot — no plan, no human gate, no pull-request loop, one repo at a time. Puppets replaces
+that with a **stateful, reviewable lifecycle that scales across many repositories at once**:
 
+- **One central, server-side controller** manages every configured repository from a single
+  place — no per-repo setup, no per-repo footprint.
 - **AI compute runs in the cloud** — the Copilot coding agent opens real pull requests.
+- **Labels carry the state**, so every step is visible and self-healing: re-running the
+  controller simply re-derives where each issue is and continues.
 - **A human stays at the two gates.** No agent touches an item until it is *approved*, and
   nothing merges until a person clicks **Merge**.
 - **Every filed item is treated as untrusted input.** Issue text is data, never
