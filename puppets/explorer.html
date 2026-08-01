@@ -323,6 +323,36 @@ nav:
         name: "puppets-reconcile.js",
         path: "downloads/puppets-reconcile.js",
         language: "javascript"
+      },
+      {
+        group: ".github/puppets/prompts",
+        name: "implementation.md",
+        path: "downloads/prompts/implementation.md",
+        language: "markdown"
+      },
+      {
+        group: ".github/puppets/prompts",
+        name: "review.md",
+        path: "downloads/prompts/review.md",
+        language: "markdown"
+      },
+      {
+        group: ".github/puppets/prompts",
+        name: "conflict.md",
+        path: "downloads/prompts/conflict.md",
+        language: "markdown"
+      },
+      {
+        group: ".github/puppets/prompts",
+        name: "needs-info.md",
+        path: "downloads/prompts/needs-info.md",
+        language: "markdown"
+      },
+      {
+        group: ".github/puppets/prompts",
+        name: "invalid-approval.md",
+        path: "downloads/prompts/invalid-approval.md",
+        language: "markdown"
       }
     ];
 
@@ -486,9 +516,10 @@ nav:
     }
 
     function highlightSource(source, language) {
-      return language === "javascript"
-        ? highlightJavaScript(source)
-        : highlightYaml(source);
+      if (language === "javascript") return highlightJavaScript(source);
+      if (language === "yaml") return highlightYaml(source);
+      // markdown / plaintext: no syntax coloring, just safely escaped text.
+      return escapeHtml(source);
     }
 
     function renderTree() {
