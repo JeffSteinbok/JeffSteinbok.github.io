@@ -2,11 +2,8 @@
 layout: doc
 title: Puppets canonical workflow source browser
 permalink: /puppets/explorer.html
-hero_image: /puppets/puppetslogo.png
 header_logo: /puppets/puppetslogo.png
 header_logo_url: /puppets/
-heading: Puppets
-tagline: Browse the canonical workflow source for the Puppets automation harness
 nav:
   - label: Why
     url: "/puppets/#why-it-exists"
@@ -21,14 +18,6 @@ nav:
   - label: Source browser
     url: "/puppets/explorer.html"
 ---
-<script>
-  (() => {
-    const param = new URLSearchParams(window.location.search).get("scoutTheme");
-    const theme =
-      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    document.documentElement.setAttribute("data-theme", theme);
-  })();
-</script>
 <style>
     :root {
       color-scheme: light;
@@ -219,7 +208,21 @@ nav:
     }
     .puppets-explorer .status.error { color: var(--cp-danger); }
 
-    .puppets-explorer .hljs { color: var(--cp-text); background: var(--cp-surface); }
+    /* Neutralize the site's prose (.doc) code chrome inside the widget and
+       let the code block fill its surface instead of hugging each text run. */
+    .puppets-explorer pre,
+    .puppets-explorer code {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .puppets-explorer code { padding: 0; }
+    .puppets-explorer .copy-btn { display: none; }
+    .puppets-explorer .hljs {
+      display: block;
+      color: var(--cp-text);
+      background: transparent;
+    }
     .puppets-explorer .hljs-comment,
     .puppets-explorer .hljs-quote { color: var(--cp-text-muted); font-style: italic; }
     .puppets-explorer .hljs-keyword,
