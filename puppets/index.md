@@ -144,16 +144,19 @@ Everything else — triage, state, labels, and the digest — is driven centrall
 ### Per-repo guidance (optional)
 {: #per-repo-guidance-optional}
 
-Managed repos can carry per-step guidance for the coding agent under a
-`.github/puppets/` directory — one Markdown file per lifecycle step
-(`.github/puppets/<step>.md`, read from the default branch). **Today the reconciler consumes
-one of them, `.github/puppets/implementation.md`:** whenever the coding agent is assigned an
-approved issue in that repo, the file's contents are posted as a trusted
+Managed repos can carry step-specific guidance for the coding agent under
+`.github/puppets/`, read from the default branch. **The currently supported file is
+`.github/puppets/implementation.md`:** whenever the coding agent is assigned an approved
+issue in that repo, the file's contents are posted as a trusted
 **implementation-instructions** comment for the agent to follow. Use it for repo-specific
 conventions: how to run tests, coding standards, files to avoid, PR expectations. It's
 entirely optional (a repo with no such file is handled normally), but note the guardrails on
 a guidance file: it's read from the **default branch**, must be **≤ 20 KB**, and if it's
 present-but-malformed the reconciler **skips that repo** rather than guessing.
+
+Additional files will be introduced only with the stages that consume them:
+`remediation.md`, `curation.md`, and `review.md`. Deterministic triage does not use a guidance
+file.
 
 ```markdown
 <!-- .github/puppets/implementation.md -->

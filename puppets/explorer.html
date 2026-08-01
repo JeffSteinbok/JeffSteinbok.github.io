@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Puppets canonical workflow explorer</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    button, a { font: inherit; }
+    a { color: var(--cp-link); }
+    .shell {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+    .eyebrow {
+      margin: 0 0 4px;
+      color: var(--cp-accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      line-height: 1.15;
+    }
+    .subtitle {
+      max-width: 760px;
+      margin: 8px 0 0;
+      color: var(--cp-text-muted);
+      line-height: 1.5;
+    }
+    .back {
+      flex: 0 0 auto;
+      padding-top: 4px;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+      min-height: 70vh;
+      overflow: hidden;
+      border: 1px solid var(--cp-border);
+      border-radius: 16px;
+      background: var(--cp-surface);
+      box-shadow: 0 1px 2px var(--cp-border);
+    }
+    .sidebar {
+      padding: 16px;
+      border-right: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .sidebar h2 {
+      margin: 0 0 12px;
+      color: var(--cp-text-muted);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .tree {
+      display: grid;
+      gap: 4px;
+    }
+    .folder {
+      padding: 8px 10px 4px;
+      color: var(--cp-text-soft);
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 0.78rem;
+    }
+    .file {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 0.625rem;
+      background: transparent;
+      color: var(--cp-text);
+      cursor: pointer;
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 0.82rem;
+      text-align: left;
+    }
+    .file:hover {
+      border-color: var(--cp-border);
+      background: var(--cp-surface-soft);
+    }
+    .file[aria-current="true"] {
+      border-color: var(--cp-accent);
+      background: var(--cp-accent-soft);
+      color: var(--cp-accent);
+      font-weight: 700;
+    }
+    .viewer {
+      min-width: 0;
+      background: var(--cp-surface);
+    }
+    .viewerbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .filename {
+      min-width: 0;
+      overflow: hidden;
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+    .action {
+      padding: 7px 10px;
+      border: 1px solid var(--cp-border);
+      border-radius: 0.625rem;
+      background: var(--cp-surface);
+      color: var(--cp-text);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .action:hover {
+      border-color: var(--cp-accent);
+      color: var(--cp-accent);
+    }
+    .codewrap {
+      position: relative;
+      min-height: calc(70vh - 58px);
+      overflow: auto;
+      background: var(--cp-surface);
+    }
+    pre {
+      min-width: max-content;
+      margin: 0;
+      padding: 20px;
+      tab-size: 2;
+    }
+    code {
+      font-family: Consolas, "Courier New", Courier, monospace;
+      font-size: 0.86rem;
+      line-height: 1.55;
+    }
+    .status {
+      padding: 24px;
+      color: var(--cp-text-muted);
+    }
+    .status.error { color: var(--cp-danger); }
+
+    .hljs { color: var(--cp-text); background: transparent; }
+    .hljs-comment, .hljs-quote { color: var(--cp-text-muted); font-style: italic; }
+    .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type {
+      color: var(--cp-accent);
+      font-weight: 700;
+    }
+    .hljs-string, .hljs-regexp, .hljs-template-variable { color: var(--cp-success); }
+    .hljs-number, .hljs-symbol, .hljs-bullet { color: var(--cp-warning); }
+    .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--cp-link); }
+    .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-property { color: var(--cp-text-soft); }
+    .hljs-meta, .hljs-built_in { color: var(--cp-accent); }
+    .hljs-addition { background: var(--cp-accent-soft); color: var(--cp-success); }
+    .hljs-deletion { background: var(--cp-highlight); color: var(--cp-danger); }
+
+    @media (max-width: 760px) {
+      .shell { padding: 16px; }
+      .topbar { display: block; }
+      .back { display: inline-block; margin-top: 12px; }
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--cp-border);
+      }
+      .tree { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .folder { grid-column: 1 / -1; }
+      .file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .viewerbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Canonical example</p>
+        <h1>Puppets workflow explorer</h1>
+        <p class="subtitle">
+          Browse the complete copyable controller, reusable workflows, and extracted
+          JavaScript implementation.
+        </p>
+      </div>
+      <a class="back" href="./">Back to Puppets docs</a>
+    </header>
+
+    <section class="workspace" aria-label="Puppets canonical files">
+      <aside class="sidebar">
+        <h2>Files</h2>
+        <nav class="tree" id="tree" aria-label="Canonical file tree"></nav>
+      </aside>
+      <article class="viewer">
+        <div class="viewerbar">
+          <div class="filename" id="filename">Select a file</div>
+          <div class="actions">
+            <button class="action" id="copy" type="button">Copy</button>
+            <a class="action" id="download" href="#" download>Download</a>
+          </div>
+        </div>
+        <div class="codewrap">
+          <div class="status" id="status">Loading canonical example...</div>
+          <pre id="pre" hidden><code id="code"></code></pre>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const files = [
+      {
+        group: ".github/workflows",
+        name: "puppets-controller.yml",
+        path: "downloads/puppets-controller.yml",
+        language: "yaml"
+      },
+      {
+        group: ".github/workflows",
+        name: "puppets-reconcile.yml",
+        path: "downloads/puppets-reconcile.yml",
+        language: "yaml"
+      },
+      {
+        group: ".github/workflows",
+        name: "puppets-bootstrap-labels.yml",
+        path: "downloads/puppets-bootstrap-labels.yml",
+        language: "yaml"
+      },
+      {
+        group: ".github/scripts",
+        name: "puppets-reconcile.js",
+        path: "downloads/puppets-reconcile.js",
+        language: "javascript"
+      }
+    ];
+
+    const tree = document.getElementById("tree");
+    const filename = document.getElementById("filename");
+    const status = document.getElementById("status");
+    const pre = document.getElementById("pre");
+    const code = document.getElementById("code");
+    const copy = document.getElementById("copy");
+    const download = document.getElementById("download");
+    let currentText = "";
+    let currentFile = null;
+
+    function escapeHtml(value) {
+      return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function token(className, value) {
+      return `<span class="${className}">${escapeHtml(value)}</span>`;
+    }
+
+    function highlightJavaScript(source) {
+      const keywords = new Set([
+        "async", "await", "break", "case", "catch", "class", "const", "continue",
+        "default", "delete", "do", "else", "export", "extends", "false", "finally",
+        "for", "from", "function", "get", "if", "import", "in", "instanceof", "let",
+        "module", "new", "null", "of", "return", "set", "static", "super", "switch",
+        "this", "throw", "true", "try", "typeof", "undefined", "var", "void", "while",
+        "with", "yield"
+      ]);
+      let output = "";
+      let index = 0;
+
+      while (index < source.length) {
+        const char = source[index];
+        const next = source[index + 1];
+
+        if (char === "/" && next === "/") {
+          const end = source.indexOf("\n", index);
+          const stop = end === -1 ? source.length : end;
+          output += token("hljs-comment", source.slice(index, stop));
+          index = stop;
+          continue;
+        }
+        if (char === "/" && next === "*") {
+          const end = source.indexOf("*/", index + 2);
+          const stop = end === -1 ? source.length : end + 2;
+          output += token("hljs-comment", source.slice(index, stop));
+          index = stop;
+          continue;
+        }
+        if (char === "'" || char === '"' || char === "`") {
+          const quote = char;
+          let stop = index + 1;
+          while (stop < source.length) {
+            if (source[stop] === "\\") {
+              stop += 2;
+              continue;
+            }
+            if (source[stop] === quote) {
+              stop++;
+              break;
+            }
+            stop++;
+          }
+          output += token("hljs-string", source.slice(index, stop));
+          index = stop;
+          continue;
+        }
+        if (/[0-9]/.test(char)) {
+          const match = source.slice(index).match(/^(?:0x[\da-f]+|\d+(?:\.\d+)?)/i);
+          output += token("hljs-number", match[0]);
+          index += match[0].length;
+          continue;
+        }
+        if (/[A-Za-z_$]/.test(char)) {
+          const match = source.slice(index).match(/^[A-Za-z_$][\w$]*/);
+          const word = match[0];
+          output += keywords.has(word) ? token("hljs-keyword", word) : escapeHtml(word);
+          index += word.length;
+          continue;
+        }
+        output += escapeHtml(char);
+        index++;
+      }
+      return output;
+    }
+
+    function yamlCommentIndex(line) {
+      let quote = "";
+      for (let index = 0; index < line.length; index++) {
+        const char = line[index];
+        if (quote && char === "\\") {
+          index++;
+        } else if (char === "'" || char === '"') {
+          quote = quote === char ? "" : (quote || char);
+        } else if (char === "#" && !quote) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    function highlightYamlValue(value) {
+      let output = "";
+      let index = 0;
+      while (index < value.length) {
+        const char = value[index];
+        if (char === "'" || char === '"') {
+          const quote = char;
+          let stop = index + 1;
+          while (stop < value.length) {
+            if (value[stop] === "\\") {
+              stop += 2;
+              continue;
+            }
+            if (value[stop] === quote) {
+              stop++;
+              break;
+            }
+            stop++;
+          }
+          output += token("hljs-string", value.slice(index, stop));
+          index = stop;
+          continue;
+        }
+        const scalar = value.slice(index).match(/^(true|false|null|yes|no|on|off)\b/i);
+        if (scalar) {
+          output += token("hljs-literal", scalar[0]);
+          index += scalar[0].length;
+          continue;
+        }
+        const number = value.slice(index).match(/^-?\d+(?:\.\d+)?\b/);
+        if (number) {
+          output += token("hljs-number", number[0]);
+          index += number[0].length;
+          continue;
+        }
+        output += escapeHtml(char);
+        index++;
+      }
+      return output;
+    }
+
+    function highlightYaml(source) {
+      return source.split("\n").map((line) => {
+        const commentAt = yamlCommentIndex(line);
+        const body = commentAt === -1 ? line : line.slice(0, commentAt);
+        const comment = commentAt === -1 ? "" : line.slice(commentAt);
+        const key = body.match(/^(\s*(?:-\s+)?)([A-Za-z_][\w.-]*)(\s*:)(.*)$/);
+        const highlighted = key
+          ? `${escapeHtml(key[1])}${token("hljs-attr", key[2])}${escapeHtml(key[3])}${highlightYamlValue(key[4])}`
+          : highlightYamlValue(body);
+        return highlighted + (comment ? token("hljs-comment", comment) : "");
+      }).join("\n");
+    }
+
+    function highlightSource(source, language) {
+      return language === "javascript"
+        ? highlightJavaScript(source)
+        : highlightYaml(source);
+    }
+
+    function renderTree() {
+      let group = "";
+      for (const file of files) {
+        if (file.group !== group) {
+          group = file.group;
+          const folder = document.createElement("div");
+          folder.className = "folder";
+          folder.textContent = group;
+          tree.appendChild(folder);
+        }
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "file";
+        button.textContent = file.name;
+        button.dataset.path = file.path;
+        button.addEventListener("click", () => openFile(file));
+        tree.appendChild(button);
+      }
+    }
+
+    async function openFile(file) {
+      currentFile = file;
+      filename.textContent = `${file.group}/${file.name}`;
+      download.href = file.path;
+      download.setAttribute("download", file.name);
+      status.hidden = false;
+      status.className = "status";
+      status.textContent = "Loading...";
+      pre.hidden = true;
+
+      for (const button of tree.querySelectorAll(".file")) {
+        button.setAttribute("aria-current", String(button.dataset.path === file.path));
+      }
+
+      try {
+        const response = await fetch(file.path, { cache: "no-cache" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        currentText = await response.text();
+        code.innerHTML = highlightSource(currentText, file.language);
+        code.className = `hljs language-${file.language}`;
+        status.hidden = true;
+        pre.hidden = false;
+        const url = new URL(window.location.href);
+        url.searchParams.set("file", file.name);
+        history.replaceState(null, "", url);
+      } catch (error) {
+        status.className = "status error";
+        status.textContent = `Could not load ${file.name}: ${error.message}`;
+      }
+    }
+
+    copy.addEventListener("click", async () => {
+      if (!currentText) return;
+      await navigator.clipboard.writeText(currentText);
+      const prior = copy.textContent;
+      copy.textContent = "Copied";
+      window.setTimeout(() => { copy.textContent = prior; }, 1200);
+    });
+
+    renderTree();
+    const requested = new URLSearchParams(window.location.search).get("file");
+    openFile(files.find(file => file.name === requested) || files[0]);
+  </script>
+</body>
+</html>

@@ -1,8 +1,8 @@
 name: Puppets Lifecycle
 
-# Edit this configuration, save all three Puppets workflow files under
-# .github/workflows/, and add a PUPPETS_TOKEN Actions secret. If you rename this file,
-# update inbox_workflow_id below to the new filename.
+# Edit this configuration, save the three workflow files under .github/workflows/,
+# save puppets-reconcile.js under .github/scripts/, and add a PUPPETS_TOKEN Actions
+# secret. If you rename this file, update inbox_workflow_id below to the new filename.
 
 on:
   schedule:
