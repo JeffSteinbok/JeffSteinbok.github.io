@@ -18,25 +18,21 @@
 /* Push page content below the fixed bar. */
 body.has-header { padding-top: 4.5rem; }
 
-/* Site logo = favicon, matching the browser tab. */
+/* Site logo = the JS mark, matching the browser-tab favicon. */
 .site-logo {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 34px;
   height: 34px;
   border-radius: 8px;
   border: 1px solid $border;
-  background: $card-bg;
-  text-decoration: none;
   flex-shrink: 0;
   overflow: hidden;
   transition: border-color 0.2s;
 }
 .site-logo img {
-  width: 24px;
-  height: 24px;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 .site-logo:hover { border-color: $accent; }
