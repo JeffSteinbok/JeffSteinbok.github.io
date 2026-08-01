@@ -194,16 +194,17 @@ separate Puppets project.
 
 [**Explore the complete canonical example with syntax highlighting →**](explorer.html)
 
-Download the three workflow files into `.github/workflows/`:
+Add the three workflow files into `.github/workflows/` — each opens in the explorer, where
+you can copy or download it:
 
-1. [**Download the canonical `puppets-controller.yml` example**](downloads/puppets-controller.yml)
+1. [**`puppets-controller.yml`**](explorer.html?file=puppets-controller.yml)
    — your schedule and troupe configuration.
-2. [`puppets-reconcile.yml`](downloads/puppets-reconcile.yml) — the reusable lifecycle
-   engine.
-3. [`puppets-bootstrap-labels.yml`](downloads/puppets-bootstrap-labels.yml) — the label
-   bootstrapper used by the engine.
+2. [`puppets-reconcile.yml`](explorer.html?file=puppets-reconcile.yml) — the reusable
+   lifecycle engine.
+3. [`puppets-bootstrap-labels.yml`](explorer.html?file=puppets-bootstrap-labels.yml) — the
+   label bootstrapper used by the engine.
 
-Then download [`puppets-reconcile.js`](downloads/puppets-reconcile.js) into
+Then add [`puppets-reconcile.js`](explorer.html?file=puppets-reconcile.js) into
 `.github/scripts/`. The workflow files contain only configuration and orchestration; the
 reconciliation implementation lives in this JavaScript module.
 
