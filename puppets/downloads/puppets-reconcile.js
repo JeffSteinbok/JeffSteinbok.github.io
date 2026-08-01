@@ -1,19 +1,69 @@
+/**
+ * Puppets — lifecycle reconciler.
+ *
+ * This module is the whole engine behind Puppets: a single, stateless pass that
+ * walks a fleet of managed repositories and nudges every issue and pull request
+ * one step further along the lifecycle. It is invoked by the reusable workflow
+ * `puppets-reconcile.yml` through `actions/github-script`, which supplies the
+ * `{ github, context, core }` toolkit (an authenticated Octokit, the workflow
+ * context, and the Actions core helpers).
+ *
+ * State lives entirely in GitHub labels (`puppets:*`), so the reconciler holds no
+ * database and can be re-run at any time: it simply re-derives where each item is
+ * from its current label and picks up where it left off. Transitions are
+ * forward-only, which makes repeated/overlapping runs safe.
+ *
+ * Lifecycle (one active label at a time):
+ *   (no label) → needs-info → (cleared) → approved → claimed → in-review → done
+ *   with side branches: needs-work (conflict remediation) and needs-human (escalation).
+ *
+ * Security model: an issue's title/body are treated as untrusted data, never as
+ * instructions. Nothing acts on an item until a human applies `puppets:approved`,
+ * and even then the approval is re-verified — the approver must be allowlisted AND
+ * currently hold write/triage access on that repo (see `validApproval`). A single
+ * `puppets:no-auto` label takes an item completely out of scope.
+ *
+ * Configuration is passed entirely through environment variables (wired up by the
+ * calling workflow):
+ *   PUPPETS_OWNER            — the org/user that owns every managed repo.
+ *   PUPPETS_REPOSITORIES     — newline-separated list of managed repo names.
+ *   PUPPETS_APPROVAL_ACTORS  — newline-separated allowlist of logins permitted to approve.
+ *   PUPPETS_INBOX_WORKFLOW_ID — this workflow's file id, used to find the previous run.
+ *   MAX_ISSUES_PER_REPO      — cap on new Copilot assignments per repo per run.
+ *   CONFLICT_RETRIES         — how many times Copilot is asked to resolve a conflict
+ *                              before the item is escalated to a human.
+ *   INBOX_FALLBACK_HOURS     — lookback window for the "new issues" digest on the first run.
+ *   DRY_RUN                  — when 'true', log every intended mutation but write nothing.
+ */
 module.exports = async ({ github, context, core }) => {
+  const fs = require('fs');
+  // ── Configuration (all inputs arrive as environment variables) ──
   const owner = process.env.PUPPETS_OWNER.trim();
   const dryRun = process.env.DRY_RUN === 'true';
   const maxPerRepo = Number.parseInt(process.env.MAX_ISSUES_PER_REPO, 10);
+  // At least one conflict-resolution attempt; default to 2 when unset/invalid.
   const conflictRetries = Math.max(1, Number.parseInt(process.env.CONFLICT_RETRIES, 10) || 2);
   const repos = process.env.PUPPETS_REPOSITORIES.trim().split('\n').map(r => r.trim()).filter(Boolean);
+  // The token's own identity — used to recognise comments/assignments this
+  // automation itself created (so it updates its own markers rather than duplicating).
   const authenticatedUser = await github.rest.users.getAuthenticated();
   const automationLogin = authenticatedUser.data.login.toLowerCase();
+  // Logins permitted to approve work. Membership here is necessary but NOT
+  // sufficient — the approver's live repo permission is re-checked at approval time.
   const approvalActors = new Set(
     process.env.PUPPETS_APPROVAL_ACTORS
       .split('\n')
       .map(actor => actor.trim().toLowerCase())
       .filter(Boolean)
   );
+  // Repo permission levels that count as "trusted enough to approve".
   const approvalPermissions = new Set(['admin', 'maintain', 'push', 'write', 'triage']);
+  // Hidden HTML markers that let us find (and update in place) the single
+  // instruction comment this automation posts for a given step.
   const implementationMarker = '<!-- puppets:implementation-instructions:v1 -->';
+  const reviewMarker = '<!-- puppets:review-instructions:v1 -->';
+  // Every lifecycle label. Exactly one is active on an item at a time; `setState`
+  // enforces that by removing the others. Order is informational only.
   const stateLabels = [
     'puppets:needs-info',
     'puppets:approved',
@@ -26,12 +76,39 @@ module.exports = async ({ github, context, core }) => {
     'puppets:done',
   ];
 
+  // Fail fast on misconfiguration rather than silently doing nothing / everything.
   if (!Number.isInteger(maxPerRepo) || maxPerRepo < 1) {
     throw new Error('max_issues_per_repo must be a positive integer');
   }
   if (!owner || repos.length === 0 || approvalActors.size === 0) {
     throw new Error('owner, repositories, and approval_actors must not be empty');
   }
+
+  // ── Prompts & messages (kept out of this file) ──
+  // Every piece of prose the engine emits — the LLM prompts it hands to Copilot for the
+  // implementation and review steps, the conflict-remediation directive, and the
+  // author-facing messages — lives under .github/puppets/prompts/ so the wording can be
+  // edited without touching engine logic. They are read from the controller checkout; a
+  // missing file degrades gracefully to empty text (that step simply posts nothing).
+  const promptsDir = '.github/puppets/prompts';
+  const loadPrompt = name => {
+    try {
+      return fs.readFileSync(`${promptsDir}/${name}.md`, 'utf8').trim();
+    } catch (error) {
+      core.warning(`Prompt file ${promptsDir}/${name}.md not found; using empty text.`);
+      return '';
+    }
+  };
+  // Fill {placeholders} in a template from a small map of values.
+  const render = (template, values) =>
+    template.replace(/\{(\w+)\}/g, (match, key) => (key in values ? values[key] : match));
+  const prompts = {
+    implementation: loadPrompt('implementation'),
+    review: loadPrompt('review'),
+    conflict: loadPrompt('conflict'),
+    needsInfo: loadPrompt('needs-info'),
+    invalidApproval: loadPrompt('invalid-approval'),
+  };
 
   // "Inbox" cutoff: surface issues filed since this workflow's previous run, so a
   // freshly filed issue is announced exactly once and old backlog is never swept.
@@ -57,13 +134,16 @@ module.exports = async ({ github, context, core }) => {
     inboxSince = new Date(Date.now() - inboxFallbackHours * 3600 * 1000);
     core.warning(`Could not read prior run time (${error.message}); using ${inboxFallbackHours}h fallback.`);
   }
-
+  // ── Small pure helpers over the issue/label shapes the REST API returns ──
   const labelName = label => typeof label === 'string' ? label : label.name;
   const issueLabels = issue => new Set((issue.labels || []).map(labelName));
+  // Skip issues opened by bots (including this automation) so we never act on our own noise.
   const isBotFiled = issue =>
     issue.user?.type === 'Bot' || issue.user?.login?.toLowerCase().endsWith('[bot]');
+  // The (non-AI) triage bar: a body with at least a little substance.
   const hasEnoughDetail = issue => (issue.body || '').trim().length >= 40;
 
+  // Add one label (honouring dry-run, which logs but writes nothing).
   async function addLabel(repo, issueNumber, label) {
     console.log(`  + ${label}`);
     if (!dryRun) {
@@ -95,7 +175,9 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
+  // Post a plain comment (skipping empty bodies and dry-run).
   async function comment(repo, issueNumber, body) {
+    if (!body) return;
     if (!dryRun) {
       await github.rest.issues.createComment({
         owner, repo, issue_number: issueNumber, body,
@@ -103,6 +185,10 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
+  // Read a managed repo's optional per-step guidance file (.github/puppets/<step>.md) from
+  // its default branch. This is the trusted, repo-owned augmentation to the base prompt.
+  // Returns null when absent (404); throws on a present-but-invalid file so the caller can
+  // skip that repo rather than guess. Capped at 20 KB.
   async function readStepInstructions(repo, defaultBranch, step) {
     const path = `.github/puppets/${step}.md`;
     try {
@@ -125,27 +211,36 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
-  async function upsertImplementationInstructions(repo, issue, defaultBranch, instructions) {
-    if (!instructions?.content) return;
-    const sourceUrl =
-      `https://github.com/${owner}/${repo}/blob/${defaultBranch}/${instructions.path}`;
-    const body = [
-      implementationMarker,
-      `### Puppets implementation instructions`,
-      '',
-      `Trusted source: [\`${instructions.path}\` on \`${defaultBranch}\`](${sourceUrl})`,
-      '',
-      instructions.content,
-    ].join('\n');
-    console.log(`  implementation instructions: ${instructions.path}@${defaultBranch}`);
+  // Post (or update, keyed off `marker`) the trusted instruction comment for a step. The
+  // body is the base prompt for that step (from .github/puppets/prompts/<step>.md) followed
+  // by the managed repo's optional per-repo guidance, clearly attributed to its source file.
+  // Idempotent: the hidden marker lets repeated runs update one comment instead of stacking.
+  async function upsertStepInstructions(step, marker, heading, repo, targetNumber, defaultBranch, perRepo) {
+    const base = prompts[step] || '';
+    if (!base && !perRepo?.content) return; // nothing to say for this step
+    const parts = [marker, `### ${heading}`, ''];
+    if (base) parts.push(base);
+    if (perRepo?.content) {
+      const sourceUrl =
+        `https://github.com/${owner}/${repo}/blob/${defaultBranch}/${perRepo.path}`;
+      parts.push(
+        '',
+        '---',
+        `Repository-specific guidance (trusted source: [\`${perRepo.path}\` on \`${defaultBranch}\`](${sourceUrl})):`,
+        '',
+        perRepo.content,
+      );
+    }
+    const body = parts.join('\n');
+    console.log(`  ${step} instructions${perRepo?.content ? ` + ${perRepo.path}@${defaultBranch}` : ''}`);
     if (dryRun) return;
 
     const comments = await github.paginate(github.rest.issues.listComments, {
-      owner, repo, issue_number: issue.number, per_page: 100,
+      owner, repo, issue_number: targetNumber, per_page: 100,
     });
     const existing = comments.find(candidate =>
       candidate.user?.login?.toLowerCase() === automationLogin &&
-      candidate.body?.includes(implementationMarker)
+      candidate.body?.includes(marker)
     );
     if (existing) {
       await github.rest.issues.updateComment({
@@ -153,7 +248,7 @@ module.exports = async ({ github, context, core }) => {
       });
     } else {
       await github.rest.issues.createComment({
-        owner, repo, issue_number: issue.number, body,
+        owner, repo, issue_number: targetNumber, body,
       });
     }
   }
@@ -299,8 +394,8 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
-  // Re-engage the Copilot coding agent on an existing PR (remediation loop) by
-  // re-asserting its assignment and posting a directive comment on the PR.
+  // Re-engage the Copilot coding agent on an existing PR by re-asserting its
+  // assignment and (optionally) posting a directive comment on the PR.
   async function repromptCopilot(repo, pr, botId, directive) {
     const actorIds = [...new Set([...(pr.assignees?.nodes || []).map(a => a.id), botId])];
     if (dryRun) return;
@@ -310,14 +405,16 @@ module.exports = async ({ github, context, core }) => {
           assignable { ... on PullRequest { number } }
         }
       }`, { assignableId: pr.id, actorIds });
-    await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body: directive });
+    if (directive) {
+      await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body: directive });
+    }
   }
 
   // Advance an already-claimed item along claimed -> in-review -> done based on
   // its PR, and keep the PR mergeable for the configured merge policy.
   // Runs over open AND closed issues (a merged PR auto-closes the issue, so `done`
   // must be applied after close). Forward-only for lifecycle labels.
-  async function reconcileInFlight(repo, issue, botIdRef) {
+  async function reconcileInFlight(repo, issue, defaultBranch, reviewInstructions, botIdRef) {
     const labels = issueLabels(issue);
     const pr = await findLinkedPR(repo, issue.number);
     if (!pr) return;
@@ -368,9 +465,7 @@ module.exports = async ({ github, context, core }) => {
         botIdRef.id ??= await getCopilotBotId(repo);
         if (botIdRef.id) {
           await repromptCopilot(repo, pr, botIdRef.id,
-            '@copilot this PR has merge conflicts with the base branch. ' +
-            'Please merge the base branch into this one, resolve every conflict, and push. ' +
-            `(Puppets remediation attempt ${next}/${conflictRetries}.)`);
+            render(prompts.conflict, { attempt: next, total: conflictRetries }));
         }
         await setConflictAttempts(repo, pr.number, next, 'Asked Copilot to resolve the conflict on its branch.', commentId);
         await setState(repo, issue, 'puppets:needs-work');
@@ -378,9 +473,15 @@ module.exports = async ({ github, context, core }) => {
       }
     }
 
-    // 3. Otherwise it is open and ready -> in-review.
+    // 3. Otherwise it is open and ready -> in-review. On entering review, hand Copilot the
+    //    review prompt (base + per-repo review.md) as a trusted comment on the PR so the
+    //    review step is itself LLM-driven. The marker keeps this to a single comment.
     if (!labels.has('puppets:in-review') && !labels.has('puppets:needs-human')) {
       console.log(`#${issue.number}: PR #${pr.number} ready for review -> in-review`);
+      await upsertStepInstructions(
+        'review', reviewMarker, 'Puppets review instructions',
+        repo, pr.number, defaultBranch, reviewInstructions
+      );
       await setState(repo, issue, 'puppets:in-review');
     }
   }
@@ -393,10 +494,16 @@ module.exports = async ({ github, context, core }) => {
     console.log(`\n📦 ${owner}/${repo}`);
     const repository = await github.rest.repos.get({ owner, repo });
     const defaultBranch = repository.data.default_branch;
+    // Load this repo's optional per-repo guidance for the two LLM steps up front. A
+    // present-but-invalid file (too big / wrong type) skips the whole repo rather than
+    // letting the agent run on half-read instructions.
     let implementationInstructions;
+    let reviewInstructions;
     try {
       implementationInstructions =
         await readStepInstructions(repo, defaultBranch, 'implementation');
+      reviewInstructions =
+        await readStepInstructions(repo, defaultBranch, 'review');
     } catch (error) {
       core.error(error.message);
       console.log(`Skipping ${owner}/${repo} because its instructions are invalid.`);
@@ -428,8 +535,7 @@ module.exports = async ({ github, context, core }) => {
           await comment(
             repo,
             issue.number,
-            `Puppets removed an invalid approval: ${approval.reason}. ` +
-              'An allowlisted collaborator with write or triage access must apply `puppets:approved`.'
+            render(prompts.invalidApproval, { reason: approval.reason })
           );
           continue;
         }
@@ -441,11 +547,9 @@ module.exports = async ({ github, context, core }) => {
         console.log(`#${issue.number}: approved by ${approval.actor}`);
 
         if (!alreadyAssigned) {
-          await upsertImplementationInstructions(
-            repo,
-            issue,
-            defaultBranch,
-            implementationInstructions
+          await upsertStepInstructions(
+            'implementation', implementationMarker, 'Puppets implementation instructions',
+            repo, issue.number, defaultBranch, implementationInstructions
           );
           if (!dryRun) {
             botId ??= await getCopilotBotId(repo);
@@ -476,11 +580,7 @@ module.exports = async ({ github, context, core }) => {
       if (!hasEnoughDetail(issue)) {
         console.log(`#${issue.number}: needs more information`);
         await setState(repo, issue, 'puppets:needs-info');
-        await comment(
-          repo,
-          issue.number,
-          'Please add enough detail to reproduce or evaluate this issue (at least a short description, expected behavior, and actual behavior).'
-        );
+        await comment(repo, issue.number, prompts.needsInfo);
       }
     }
 
