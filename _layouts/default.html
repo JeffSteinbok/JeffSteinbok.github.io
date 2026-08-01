@@ -6,9 +6,61 @@
   <title>{{ page.title | default: site.title }}</title>
   <link rel="icon" type="image/x-icon" href="{{ '/favicon.ico' | relative_url }}" />
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}" />
+  <script>
+    // Set theme before first paint to avoid a flash. Saved choice wins; else system.
+    (function () {
+      try {
+        var saved = localStorage.getItem('theme');
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
 </head>
-<body>
+<body{% if page.url != '/' %} class="has-header"{% endif %}>
+  {% if page.url == '/' %}
+    <div class="theme-toggle-float">{% include theme-toggle.html %}</div>
+  {% else %}
+    {% include site-header.html %}
+  {% endif %}
   {{ content }}
+  <script>
+    // Toggle + persist. Runs after the button exists in the DOM.
+    (function () {
+      var root = document.documentElement;
+      document.querySelectorAll('.theme-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+          root.setAttribute('data-theme', next);
+          try { localStorage.setItem('theme', next); } catch (e) {}
+          if (window.__mermaidRetheme) window.__mermaidRetheme(next);
+        });
+      });
+    })();
+  </script>
+  <script>
+    // Add a copy button to each code block inside prose (.doc), skipping diagrams.
+    (function () {
+      document.querySelectorAll('.doc pre').forEach(function (pre) {
+        if (pre.classList.contains('mermaid')) return;
+        pre.classList.add('has-copy');
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.type = 'button';
+        btn.textContent = 'Copy';
+        btn.addEventListener('click', function () {
+          var code = pre.querySelector('code') || pre;
+          navigator.clipboard.writeText(code.innerText.replace(/\n$/, '')).then(function () {
+            btn.textContent = 'Copied';
+            setTimeout(function () { btn.textContent = 'Copy'; }, 1500);
+          });
+        });
+        pre.appendChild(btn);
+      });
+    })();
+  </script>
   {% if page.mermaid %}
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
@@ -21,7 +73,18 @@
       graph.textContent = code.textContent;
       pre.replaceWith(graph);
     });
-    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+    const themeFor = (t) => (t === "light" ? "default" : "dark");
+    mermaid.initialize({ startOnLoad: true, theme: themeFor(document.documentElement.getAttribute("data-theme")) });
+    // Re-render diagrams when the user flips the theme.
+    window.__mermaidRetheme = (t) => {
+      document.querySelectorAll("pre.mermaid").forEach((el) => {
+        if (el.dataset.src === undefined) el.dataset.src = el.textContent;
+        el.removeAttribute("data-processed");
+        el.innerHTML = el.dataset.src;
+      });
+      mermaid.initialize({ startOnLoad: false, theme: themeFor(t) });
+      mermaid.run({ nodes: document.querySelectorAll("pre.mermaid") });
+    };
   </script>
   {% endif %}
 </body>

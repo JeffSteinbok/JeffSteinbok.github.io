@@ -1,0 +1,67 @@
+# Content for /carapace. Add a plugin by appending a card; no HTML editing.
+sections:
+  - title: 🚀 Getting Started
+    desc: Build your own OpenClaw plugin in minutes. Start with the SDK and template, then look at the existing plugins for inspiration.
+    cards:
+      - url: https://github.com/JeffSteinbok/carapace-plugin-sdk
+        external: true
+        icon_emoji: 📦
+        title: carapace-plugin-sdk
+        desc: The core SDK — types, helpers, CLI runtime and generator. Install it as a dependency in your plugin.
+        badge: https://img.shields.io/npm/v/carapace-plugin-sdk?style=flat&logo=npm
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/carapace-plugin-template
+        external: true
+        icon_emoji: 🧩
+        title: carapace-plugin-template
+        desc: GitHub template repo — click "Use this template" to scaffold a new plugin with build, test, and CI already wired up.
+        arrow: Use Template →
+  - title: 🔌 Plugins
+    desc: Ready-to-use plugins that connect OpenClaw to real-world services.
+    cards:
+      - url: https://github.com/JeffSteinbok/carapace-stock-quotes
+        external: true
+        icon_emoji: 📈
+        title: carapace-stock-quotes
+        desc: Stock, ETF &amp; mutual fund quotes powered by Yahoo Finance and Finnhub.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/carapace-outlook
+        external: true
+        icon_emoji: 📧
+        title: carapace-outlook
+        desc: Unified Outlook mail, calendar, and tasks plugin via Microsoft Graph.
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/carapace-mail-runtime
+        external: true
+        icon_emoji: 📬
+        title: carapace-mail-runtime
+        desc: Provider-agnostic mail processing runtime — rule engine, action registry, and dispatch pipeline.
+        badge: https://img.shields.io/npm/v/carapace-mail-runtime?style=flat&logo=npm
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/carapace-package-tracking
+        external: true
+        icon_emoji: 📦
+        title: carapace-package-tracking
+        desc: Package tracking across UPS, FedEx, USPS, and Amazon.
+        badge: https://img.shields.io/npm/v/carapace-package-tracking?style=flat&logo=npm
+        arrow: View on GitHub →
+      - url: https://github.com/JeffSteinbok/carapace-obsidian
+        external: true
+        icon_emoji: 📝
+        title: carapace-obsidian
+        desc: Obsidian plugin and indexer service for OpenClaw — search and reference your vault from your AI assistant.
+        arrow: View on GitHub →
+  - title: 🐙 More from OpenClaw
+    cards:
+      - url: https://github.com/JeffSteinbok/openclaw-hub
+        external: true
+        icon_emoji: 🦞
+        title: openclaw-hub
+        desc: Additional OpenClaw plugins &amp; services — Spotify, Home Assistant, Outlook, calendars &amp; more.
+        arrow: Browse Plugins →
+      - url: https://jeffsteinbok.github.io/octo-docs/
+        external: true
+        icon_img: assets/images/Octo_small_trimmed.png
+        title: Octo Docs
+        desc: See how Jeff has his personal AI assistant configured with these plugins.
+        arrow: View Docs →

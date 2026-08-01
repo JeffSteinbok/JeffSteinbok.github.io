@@ -1,7 +1,8 @@
-{%- comment -%} Single project card, driven by a _data/projects.yml entry. {%- endcomment -%}
-<a class="card" href="{{ include.card.url }}"{% if include.card.external %} target="_blank" rel="noopener noreferrer"{% endif %}>
+{%- comment -%} Single project card, driven by a _data/*.yml entry. {%- endcomment -%}
+<a class="card" href="{% if include.card.url contains '://' %}{{ include.card.url }}{% else %}{{ include.card.url | relative_url }}{% endif %}"{% if include.card.external %} target="_blank" rel="noopener noreferrer"{% endif %}>
   <div class="card-icon">{% if include.card.icon_img %}<img src="{{ include.card.icon_img | relative_url }}" alt="{{ include.card.title }} logo" />{% else %}{{ include.card.icon_emoji }}{% endif %}</div>
   <div class="card-title">{{ include.card.title }}</div>
   <div class="card-desc">{{ include.card.desc }}</div>
+  {% if include.card.badge %}<div class="card-badge"><img src="{{ include.card.badge }}" alt="{{ include.card.title }} badge" /></div>{% endif %}
   <div class="card-arrow">{{ include.card.arrow }}</div>
 </a>
