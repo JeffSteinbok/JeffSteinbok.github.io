@@ -18,6 +18,8 @@ nav:
     url: "#repository-setup"
   - label: Run your own
     url: "#run-your-own-controller"
+  - label: Source browser
+    url: "/puppets/explorer.html"
   - label: Labels
     url: "#stages--labels"
 ---
@@ -42,6 +44,8 @@ controllable straight from the GitHub issue view you already use.
 **A human owns the approval gate.** Filed issues are untrusted input, so nothing is worked
 on until a maintainer applies `puppets:approved`. Everything after that approval can be
 driven by automation.
+
+[**Browse the canonical workflows and JavaScript source →**](explorer.html)
 
 ## Why it exists
 
@@ -146,13 +150,23 @@ Everything else — triage, state, labels, and the digest — is driven centrall
 
 Managed repos can carry step-specific guidance for the coding agent under
 `.github/puppets/`, read from the default branch. **The currently supported file is
-`.github/puppets/implementation.md`:** whenever the coding agent is assigned an approved
-issue in that repo, the file's contents are posted as a trusted
-**implementation-instructions** comment for the agent to follow. Use it for repo-specific
-conventions: how to run tests, coding standards, files to avoid, PR expectations. It's
-entirely optional (a repo with no such file is handled normally), but note the guardrails on
-a guidance file: it's read from the **default branch**, must be **≤ 20 KB**, and if it's
-present-but-malformed the reconciler **skips that repo** rather than guessing.
+`.github/puppets/implementation.md`.** Its contents are posted to the approved issue before
+Copilot is assigned.
+
+Use it for repository-specific implementation guidance:
+
+- Build and test commands.
+- Coding conventions and generated files to avoid.
+- Dependency and pull-request expectations.
+
+The file is optional. Puppets applies three guardrails:
+
+- **Default branch only:** issue text and pull-request branches cannot replace trusted
+  instructions.
+- **20 KB maximum:** a conservative cap that prevents oversized issue comments and excessive
+  prompt context. It is intentionally well below GitHub's comment-size limit.
+- **Fail closed:** an unreadable, non-file, or oversized guidance path causes Puppets to skip
+  that repository for the run instead of silently ignoring bad instructions.
 
 Additional files will be introduced only with the stages that consume them:
 `remediation.md`, `curation.md`, and `review.md`. Deterministic triage does not use a guidance
