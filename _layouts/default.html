@@ -70,17 +70,19 @@
       const pre = code.parentElement;
       const graph = document.createElement("pre");
       graph.className = "mermaid";
-      graph.textContent = code.textContent;
+      const src = code.textContent;
+      graph.textContent = src;
+      graph.dataset.src = src; // preserve the original definition for re-theming
       pre.replaceWith(graph);
     });
     const themeFor = (t) => (t === "light" ? "default" : "dark");
     mermaid.initialize({ startOnLoad: true, theme: themeFor(document.documentElement.getAttribute("data-theme")) });
-    // Re-render diagrams when the user flips the theme.
+    // Re-render diagrams when the user flips the theme, from the saved source.
     window.__mermaidRetheme = (t) => {
       document.querySelectorAll("pre.mermaid").forEach((el) => {
-        if (el.dataset.src === undefined) el.dataset.src = el.textContent;
+        if (el.dataset.src === undefined) return;
         el.removeAttribute("data-processed");
-        el.innerHTML = el.dataset.src;
+        el.textContent = el.dataset.src;
       });
       mermaid.initialize({ startOnLoad: false, theme: themeFor(t) });
       mermaid.run({ nodes: document.querySelectorAll("pre.mermaid") });
