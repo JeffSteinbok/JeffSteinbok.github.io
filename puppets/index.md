@@ -29,8 +29,9 @@ The whole system runs in the cloud. A single central controller reaches into eve
 repository it manages, reads each issue's **labels as state**, and drives it through its
 lifecycle: triage → approval → implementation → review → merge. **GitHub's Copilot coding
 agent does the writing** — it's assigned to approved issues and opens real pull requests —
-while GitHub Actions provides the compute. There's nothing to install per repository and no
-local process to babysit; a repo joins simply by being added to the controller's list.
+while GitHub Actions provides the compute. There's no per-repository workflow to install and
+no local process to babysit; a repo joins by being added to the controller's list (and having
+the Copilot coding agent enabled).
 
 **Issue labels are the interface.** Instead of a bespoke database or UI, Puppets encodes the
 entire workflow in a small set of `puppets:*` labels. Moving an issue forward — or holding it
@@ -48,7 +49,7 @@ shot — no plan, no human gate, no pull-request loop, one repo at a time. Puppe
 that with a **stateful, reviewable lifecycle that scales across many repositories at once**:
 
 - **One central, server-side controller** manages every configured repository from a single
-  place — no per-repo setup, no per-repo footprint.
+  place — no per-repo workflow and no reconciler logic to maintain in each repo.
 - **AI compute runs in the cloud** — the Copilot coding agent opens real pull requests.
 - **Labels carry the state**, so every step is visible and self-healing: re-running the
   controller simply re-derives where each issue is and continues.
@@ -127,11 +128,19 @@ The only two a maintainer adds by hand: **`puppets:approved`** (go) and
 
 ## Build your own
 
-Puppets is **entirely centralized**. Everything lives in one **controller repository** that
-you own (private is fine); the repositories it manages need **no workflow, no config file,
-and no footprint of their own** — they join the fleet simply by being named in the
-controller's list. To stand up your own instance you add two workflow files and one token to
-the controller repo.
+Puppets is **centrally driven**: the reconciler and all of its logic live in one
+**controller repository** that you own (private is fine), and the repositories it manages
+need **no workflow of their own**. Standing up an instance means adding two workflow files
+and one token to the controller repo.
+
+Managed repos aren't *completely* untouched, though — each one needs two things:
+
+- The **Copilot coding agent enabled** on the repo, so the reconciler can assign it (it
+  refuses to proceed on a repo where Copilot isn't assignable).
+- Optionally, a small **`.github/puppets/implementation.md`** file that gives the agent
+  repo-specific guidance (see [below](#per-repo-guidance-optional)).
+
+Everything else — triage, state, labels, the digest — is driven centrally.
 
 ### 1. The fleet list
 
@@ -286,11 +295,33 @@ scoped to your managed repositories with:
 The token is **never granted merge rights** — Gate 2 is a human clicking **Merge** in the
 GitHub UI, by design.
 
+### Per-repo guidance (optional)
+{: #per-repo-guidance-optional}
+
+This is the one file a **managed** repo can add. Drop a `.github/puppets/implementation.md`
+on its default branch and, whenever the coding agent is assigned an approved issue there,
+its contents are posted as a trusted **implementation-instructions** comment for the agent
+to follow. Use it for repo-specific conventions: how to run tests, coding standards, files to
+avoid, PR expectations. It's entirely optional (a repo with no such file is handled
+normally), but note the guardrails: it's read from the **default branch**, must be **≤ 20 KB**,
+and if it's present-but-malformed the reconciler **skips that repo** rather than guessing.
+
+```markdown
+<!-- .github/puppets/implementation.md -->
+# Implementation guidance for the Copilot coding agent
+
+- Run the full test suite with `npm test` before opening a PR; keep it green.
+- Match the existing code style; do not add new dependencies without a clear need.
+- Never touch `src/generated/**` — it is produced by codegen.
+- Keep PRs focused on the linked issue; describe the change and how you verified it.
+```
+
 ### That's the whole install
 
 - **Controller repo:** the two workflow files above + the `PUPPETS_PAT` secret.
-- **Managed repos:** nothing. They're onboarded by adding a line to `REPOS`; the label
-  bootstrap gives them the vocabulary automatically.
+- **Managed repos:** enable the Copilot coding agent, and *optionally* add a
+  `.github/puppets/implementation.md`. Onboard by adding a line to `REPOS`; the label set is
+  bootstrapped for you — there's no workflow to install.
 
 ## Staying informed
 
