@@ -9,5 +9,20 @@
 </head>
 <body>
   {{ content }}
+  {% if page.mermaid %}
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+    // kramdown renders ```mermaid fences as <pre><code class="language-mermaid">.
+    // Rewrite them into <pre class="mermaid"> nodes Mermaid can pick up.
+    document.querySelectorAll("pre > code.language-mermaid").forEach((code) => {
+      const pre = code.parentElement;
+      const graph = document.createElement("pre");
+      graph.className = "mermaid";
+      graph.textContent = code.textContent;
+      pre.replaceWith(graph);
+    });
+    mermaid.initialize({ startOnLoad: true, theme: "dark" });
+  </script>
+  {% endif %}
 </body>
 </html>

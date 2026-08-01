@@ -1,0 +1,109 @@
+name: Receive Rendered Docs
+
+# Pulls the hand-curated docs bundle published by the private automation repo
+# and commits it into ./puppets so the existing Pages deploy publishes it at
+# /puppets. Triggered by a repository_dispatch from automation's Build Docs
+# Bundle workflow; can also be run manually.
+
+on:
+  repository_dispatch:
+    types: [docs-site-ready]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "automation run ID that uploaded the docs-site artifact (blank = latest)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: receive-docs
+  cancel-in-progress: false
+
+jobs:
+  receive-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve source run
+        id: src
+        run: |
+          RUN_ID="${{ github.event.client_payload.run_id || inputs.run_id }}"
+          SRC_SHA="${{ github.event.client_payload.source_sha }}"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$SRC_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Skip if bundle unchanged
+        id: guard
+        run: |
+          SRC_SHA="${{ steps.src.outputs.source_sha }}"
+          if [ -n "$SRC_SHA" ] && [ -f .last_bundle_ref ] && [ "$(cat .last_bundle_ref)" = "$SRC_SHA" ]; then
+            echo "Bundle $SRC_SHA already published; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Download the docs-site artifact from the private automation repo. Needs a
+      # scoped read token (automation → Actions: read) because it's cross-repo.
+      - name: Download docs-site artifact
+        if: steps.guard.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AUTOMATION_DOCS_READ_TOKEN }}
+        run: |
+          rm -rf ./incoming
+          RUN_ID="${{ steps.src.outputs.run_id }}"
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --repo JeffSteinbok/automation --name docs-site --dir ./incoming
+          else
+            gh run download --repo JeffSteinbok/automation --name docs-site --dir ./incoming
+          fi
+          echo "Downloaded:"
+          find ./incoming -type f | sort
+
+      - name: Sync bundle into ./puppets
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          if [ ! -d ./incoming/puppets ] || [ -z "$(ls -A ./incoming/puppets 2>/dev/null)" ]; then
+            echo "::error::Bundle did not contain a puppets/ directory."
+            exit 1
+          fi
+          mkdir -p puppets
+          # puppets/ is fully generator-owned: sync with --delete to prune retired pages.
+          rsync -av --delete --exclude='.git' ./incoming/puppets/ puppets/
+          rm -rf ./incoming
+
+      - name: Commit to main
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          SRC_SHA="${{ steps.src.outputs.source_sha }}"
+          [ -n "$SRC_SHA" ] && echo "$SRC_SHA" > .last_bundle_ref
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A puppets/ .last_bundle_ref
+          if git diff --cached --quiet; then
+            echo "No docs changes to commit."
+            exit 0
+          fi
+          # The puppets/ tree is fully generated, so replay onto the latest remote
+          # via reset --soft (conflict-free) rather than rebasing.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --soft origin/main
+            git add -A puppets/ .last_bundle_ref
+            if git diff --cached --quiet; then
+              echo "Remote already up to date."
+              exit 0
+            fi
+            git commit -m "Publish Puppets docs (source ${SRC_SHA:0:7})"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Push race on main; retrying ($attempt/3)..."
+            sleep 2
+          done
+          echo "::error::Failed to push docs after retries."
+          exit 1
