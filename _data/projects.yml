@@ -85,5 +85,5 @@ sections:
         external: false
         icon_img: /puppets/puppetslogo.png
         title: Puppets
-        desc: A gated, cloud-native automation that moves a GitHub issue from filed to merged with a human at the two gates that matter.
+        desc: A gated, cloud-native automation that moves GitHub issues from filed to merged after human approval.
         arrow: Read the docs →
