@@ -86,7 +86,7 @@ stateDiagram-v2
     Filed --> NeedsInfo : incomplete
     NeedsInfo --> Filed : author adds detail (auto-cleared)
 
-    Filed --> Approved : ★ human adds puppets:approved  (HUMAN GATE)
+    Filed --> Approved : ★ human adds puppets#58;approved  (HUMAN GATE)
 
     Approved --> Claimed : Copilot assigned to implement
     Claimed --> InReview : Copilot opens a pull request
