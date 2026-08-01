@@ -16,6 +16,8 @@ nav:
     url: "#the-lifecycle"
   - label: Repository setup
     url: "#repository-setup"
+  - label: Run your own
+    url: "#run-your-own-controller"
   - label: Labels
     url: "#labels"
 ---
@@ -137,17 +139,15 @@ To add a managed repository:
 
 - The **Copilot coding agent enabled** on the repo, so the reconciler can assign it (it
   refuses to proceed on a repo where Copilot isn't assignable).
-- Add the repository to the controller's `REPOS` configuration.
-- Optionally, a small **`.github/puppets/implementation.md`** file that gives the agent
-  repo-specific guidance (see [below](#per-repo-guidance-optional)).
+- Add the repository to the controller's `repositories:` list.
+- Optionally, a **`.github/puppets/` guidance directory** with step-specific Markdown files
+  for the agent (see [below](#per-repo-guidance-optional)).
 
-`.github/puppets/implementation.md` is the **only** per-repository Puppets file currently
-recognized. Files such as `triage.md`, `curation.md`, and `review.md` are not consumed.
-GitHub Copilot's native instruction files are separate from Puppets configuration.
+The current reconciler consumes `.github/puppets/implementation.md`; the directory layout
+allows later lifecycle steps to gain their own guidance without changing the repository
+contract. GitHub Copilot's native instruction files are separate from Puppets configuration.
 
-Everything else — triage, state, labels, and the digest — is driven centrally. The
-controller implementation is specific to this deployment; the abbreviated examples that
-previously appeared here were not a complete, usable distribution.
+Everything else — triage, state, labels, and the digest — is driven centrally.
 
 ### Per-repo guidance (optional)
 {: #per-repo-guidance-optional}
@@ -176,8 +176,44 @@ present-but-malformed the reconciler **skips that repo** rather than guessing.
 ### That's the whole repository setup
 
 - **Managed repos:** enable the Copilot coding agent, and *optionally* add a
-  `.github/puppets/implementation.md`. Onboard by adding a line to `REPOS`; the label set is
-  bootstrapped for you — there's no workflow to install.
+  `.github/puppets/` guidance directory. Onboard by adding a line to the controller's
+  `repositories:` list; the label set is bootstrapped for you — there's no workflow to
+  install.
+
+## Run your own controller
+
+Puppets can be copied into a controller repository without creating or depending on a
+separate Puppets project. Download these three workflow files into `.github/workflows/`:
+
+1. [**Download the canonical `puppets-controller.yml` example**](downloads/puppets-controller.yml)
+   — your schedule and troupe configuration.
+2. [`puppets-reconcile.yml`](downloads/puppets-reconcile.yml) — the reusable lifecycle
+   engine.
+3. [`puppets-bootstrap-labels.yml`](downloads/puppets-bootstrap-labels.yml) — the label
+   bootstrapper used by the engine.
+
+Edit `puppets-controller.yml` with your GitHub owner, repository names, and the logins
+allowed to apply `puppets:approved`. Then create a `PUPPETS_TOKEN` Actions secret in the
+controller repository. Keep the controller filename as `puppets-controller.yml`, or update
+its `inbox_workflow_id` input to match the filename you choose.
+
+Use a fine-grained personal access token that can access the controller and every managed
+repository. It needs:
+
+- **Actions: read** on the controller repository, to determine the previous reconciliation
+  run for inbox notifications.
+- **Contents: read** on managed repositories, to read the default branch and optional
+  `.github/puppets/implementation.md`.
+- **Issues: read and write** on managed repositories, to inspect, label, comment, and assign
+  issues.
+- **Pull requests: read and write** on managed repositories, to track pull requests, update
+  branches, and move completed drafts to ready-for-review.
+
+Enable the Copilot coding agent in each managed repository, commit the three files, and run
+**Puppets Lifecycle** manually with `dry_run` enabled before relying on the schedule.
+Notifications are intentionally deployment-specific: the reusable engine exposes
+`waiting_count` and `waiting_message` outputs so the controller can send them through any
+notifier.
 
 ## Staying informed
 
