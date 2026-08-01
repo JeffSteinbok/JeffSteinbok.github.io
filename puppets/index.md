@@ -5,7 +5,7 @@ permalink: /puppets/
 mermaid: true
 ---
 
-<div class="doc">
+<div class="doc" markdown="1">
 
 # Puppets
 
