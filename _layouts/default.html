@@ -65,28 +65,30 @@
   <script type="module">
     import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
     // kramdown renders ```mermaid fences as <pre><code class="language-mermaid">.
-    // Rewrite them into <pre class="mermaid"> nodes Mermaid can pick up.
+    // Rewrite them into <pre class="mermaid"> nodes, preserving the source.
     document.querySelectorAll("pre > code.language-mermaid").forEach((code) => {
       const pre = code.parentElement;
       const graph = document.createElement("pre");
       graph.className = "mermaid";
       const src = code.textContent;
       graph.textContent = src;
-      graph.dataset.src = src; // preserve the original definition for re-theming
+      graph.dataset.src = src; // original definition, for re-rendering on theme change
       pre.replaceWith(graph);
     });
     const themeFor = (t) => (t === "light" ? "default" : "dark");
-    mermaid.initialize({ startOnLoad: true, theme: themeFor(document.documentElement.getAttribute("data-theme")) });
-    // Re-render diagrams when the user flips the theme, from the saved source.
-    window.__mermaidRetheme = (t) => {
+    // Render explicitly (startOnLoad is unreliable from a deferred module) and
+    // reuse the same path when the user flips the theme.
+    const renderMermaid = (t) => {
       document.querySelectorAll("pre.mermaid").forEach((el) => {
         if (el.dataset.src === undefined) return;
         el.removeAttribute("data-processed");
         el.textContent = el.dataset.src;
       });
       mermaid.initialize({ startOnLoad: false, theme: themeFor(t) });
-      mermaid.run({ nodes: document.querySelectorAll("pre.mermaid") });
+      return mermaid.run({ querySelector: "pre.mermaid" });
     };
+    renderMermaid(document.documentElement.getAttribute("data-theme"));
+    window.__mermaidRetheme = renderMermaid;
   </script>
   {% endif %}
 </body>
