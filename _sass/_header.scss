@@ -37,6 +37,31 @@ body.has-header { padding-top: 4.5rem; }
 }
 .site-logo:hover { border-color: $accent; }
 
+/* Per-page brand logo on the LEFT (Carapace mark, Puppets mark, ...). */
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.site-brand img {
+  height: 100%;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Right cluster: theme toggle, then the JS home mark (rightmost). */
+.site-header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
 /* Optional per-page top-nav, injected via front matter. */
 .site-nav {
   display: flex;
@@ -61,7 +86,6 @@ body.has-header { padding-top: 4.5rem; }
   justify-content: center;
   width: 36px;
   height: 36px;
-  margin-left: auto;
   border-radius: 8px;
   border: 1px solid $border;
   background: $card-bg;

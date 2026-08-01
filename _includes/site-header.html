@@ -1,18 +1,22 @@
 {%- comment -%}
 Global header bar for all pages except the homepage.
-  Left:   JS monogram (home link)
-  Center: optional per-page nav. Any page/sub-site can inject one via front matter:
-            nav:
-              - label: Overview
-                url: "#overview"
-              - label: Docs
-                url: /puppets/
-  Right:  theme toggle
+  Left:   optional per-page brand logo (front matter `header_logo`, e.g. the
+          Carapace or Puppets mark). Supports `header_logo_url` and `header_logo_alt`.
+  Center: optional per-page nav (front matter `nav:` — list of { label, url }).
+  Right:  theme toggle, then the JS site mark (links home).
 {%- endcomment -%}
 <header class="site-header">
-  <a class="site-logo" href="{{ '/' | relative_url }}" aria-label="Home — jeffsteinbok.github.io">
-    <img src="{{ '/assets/images/js-logo.png' | relative_url }}" alt="jeffsteinbok.github.io" />
+  {% if page.header_logo %}
+  {% assign logo_src = page.header_logo %}
+  {% unless logo_src contains '://' %}{% assign logo_src = logo_src | relative_url %}{% endunless %}
+  {% if page.header_logo_url %}
+  <a class="site-brand" href="{% if page.header_logo_url contains '://' %}{{ page.header_logo_url }}{% else %}{{ page.header_logo_url | relative_url }}{% endif %}">
+    <img src="{{ logo_src }}" alt="{{ page.header_logo_alt | default: page.heading | default: page.title }}" />
   </a>
+  {% else %}
+  <span class="site-brand"><img src="{{ logo_src }}" alt="{{ page.header_logo_alt | default: page.heading | default: page.title }}" /></span>
+  {% endif %}
+  {% endif %}
   {% if page.nav %}
   <nav class="site-nav" aria-label="Page navigation">
     {% for item in page.nav %}
@@ -20,5 +24,10 @@ Global header bar for all pages except the homepage.
     {% endfor %}
   </nav>
   {% endif %}
-  {% include theme-toggle.html %}
+  <div class="site-header-right">
+    {% include theme-toggle.html %}
+    <a class="site-logo" href="{{ '/' | relative_url }}" aria-label="Home — jeffsteinbok.github.io">
+      <img src="{{ '/assets/images/js-logo.png' | relative_url }}" alt="jeffsteinbok.github.io" />
+    </a>
+  </div>
 </header>

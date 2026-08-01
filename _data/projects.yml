@@ -83,7 +83,7 @@ sections:
         arrow: View on GitHub →
       - url: /puppets/
         external: false
-        icon_emoji: 🧵
+        icon_img: /puppets/puppetslogo.png
         title: Puppets
         desc: A gated, cloud-native automation that moves a GitHub issue from filed to merged with a human at the two gates that matter.
         arrow: Read the docs →
