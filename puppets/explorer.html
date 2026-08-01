@@ -1,18 +1,35 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Puppets canonical workflow explorer</title>
-  <script>
-    (() => {
-      const param = new URLSearchParams(window.location.search).get("scoutTheme");
-      const theme =
-        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-      document.documentElement.setAttribute("data-theme", theme);
-    })();
-  </script>
-  <style>
+---
+layout: doc
+title: Puppets canonical workflow source browser
+permalink: /puppets/explorer.html
+hero_image: /puppets/puppetslogo.png
+header_logo: /puppets/puppetslogo.png
+header_logo_url: /puppets/
+heading: Puppets
+tagline: Browse the canonical workflow source for the Puppets automation harness
+nav:
+  - label: Why
+    url: "/puppets/#why-it-exists"
+  - label: How it works
+    url: "/puppets/#how-it-works"
+  - label: Lifecycle
+    url: "/puppets/#the-lifecycle"
+  - label: Repository setup
+    url: "/puppets/#repository-setup"
+  - label: Run your own
+    url: "/puppets/#run-your-own-controller"
+  - label: Source browser
+    url: "/puppets/explorer.html"
+---
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme =
+      param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
     :root {
       color-scheme: light;
       --cp-bg: #f7f4ef;
@@ -66,54 +83,25 @@
       --cp-highlight: rgba(253, 142, 161, 0.12);
     }
 
-    * { box-sizing: border-box; }
-    html, body { min-height: 100%; }
-    body {
-      margin: 0;
+    .doc:has(> .puppets-explorer) {
+      width: min(1440px, calc(100% - 32px));
+      max-width: none;
+    }
+    .puppets-explorer,
+    .puppets-explorer * {
+      box-sizing: border-box;
+    }
+    .puppets-explorer {
       background: var(--cp-bg);
       color: var(--cp-text);
       font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
-    }
-    button, a { font: inherit; }
-    a { color: var(--cp-link); }
-    .shell {
-      width: min(1440px, 100%);
-      margin: 0 auto;
       padding: 24px;
+      border-radius: 16px;
     }
-    .topbar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 24px;
-      margin-bottom: 20px;
-    }
-    .eyebrow {
-      margin: 0 0 4px;
-      color: var(--cp-accent);
-      font-size: 0.78rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    h1 {
-      margin: 0;
-      font-size: clamp(1.6rem, 4vw, 2.4rem);
-      line-height: 1.15;
-    }
-    .subtitle {
-      max-width: 760px;
-      margin: 8px 0 0;
-      color: var(--cp-text-muted);
-      line-height: 1.5;
-    }
-    .back {
-      flex: 0 0 auto;
-      padding-top: 4px;
-      text-decoration: none;
-      font-weight: 600;
-    }
-    .workspace {
+    .puppets-explorer button,
+    .puppets-explorer a { font: inherit; }
+    .puppets-explorer a { color: var(--cp-link); }
+    .puppets-explorer .workspace {
       display: grid;
       grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
       min-height: 70vh;
@@ -123,55 +111,55 @@
       background: var(--cp-surface);
       box-shadow: 0 1px 2px var(--cp-border);
     }
-    .sidebar {
+    .puppets-explorer .sidebar {
       padding: 16px;
       border-right: 1px solid var(--cp-border);
       background: var(--cp-bg-elevated);
     }
-    .sidebar h2 {
+    .puppets-explorer .sidebar h2 {
       margin: 0 0 12px;
       color: var(--cp-text-muted);
       font-size: 0.78rem;
       letter-spacing: 0.06em;
       text-transform: uppercase;
     }
-    .tree {
+    .puppets-explorer .tree {
       display: grid;
       gap: 4px;
     }
-    .folder {
+    .puppets-explorer .folder {
       padding: 8px 10px 4px;
       color: var(--cp-text-soft);
       font-family: Consolas, "Courier New", Courier, monospace;
       font-size: 0.78rem;
     }
-    .file {
+    .puppets-explorer .file {
       width: 100%;
       padding: 9px 10px;
-      border: 1px solid transparent;
+      border: 1px solid var(--cp-bg-elevated);
       border-radius: 0.625rem;
-      background: transparent;
+      background: var(--cp-bg-elevated);
       color: var(--cp-text);
       cursor: pointer;
       font-family: Consolas, "Courier New", Courier, monospace;
       font-size: 0.82rem;
       text-align: left;
     }
-    .file:hover {
+    .puppets-explorer .file:hover {
       border-color: var(--cp-border);
       background: var(--cp-surface-soft);
     }
-    .file[aria-current="true"] {
+    .puppets-explorer .file[aria-current="true"] {
       border-color: var(--cp-accent);
       background: var(--cp-accent-soft);
       color: var(--cp-accent);
       font-weight: 700;
     }
-    .viewer {
+    .puppets-explorer .viewer {
       min-width: 0;
       background: var(--cp-surface);
     }
-    .viewerbar {
+    .puppets-explorer .viewerbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -181,7 +169,7 @@
       border-bottom: 1px solid var(--cp-border);
       background: var(--cp-bg-elevated);
     }
-    .filename {
+    .puppets-explorer .filename {
       min-width: 0;
       overflow: hidden;
       font-family: Consolas, "Courier New", Courier, monospace;
@@ -190,12 +178,12 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .actions {
+    .puppets-explorer .actions {
       display: flex;
       flex: 0 0 auto;
       gap: 8px;
     }
-    .action {
+    .puppets-explorer .action {
       padding: 7px 10px;
       border: 1px solid var(--cp-border);
       border-radius: 0.625rem;
@@ -204,77 +192,91 @@
       cursor: pointer;
       text-decoration: none;
     }
-    .action:hover {
+    .puppets-explorer .action:hover {
       border-color: var(--cp-accent);
       color: var(--cp-accent);
     }
-    .codewrap {
+    .puppets-explorer .codewrap {
       position: relative;
       min-height: calc(70vh - 58px);
       overflow: auto;
       background: var(--cp-surface);
     }
-    pre {
+    .puppets-explorer pre {
       min-width: max-content;
       margin: 0;
       padding: 20px;
       tab-size: 2;
     }
-    code {
+    .puppets-explorer code {
       font-family: Consolas, "Courier New", Courier, monospace;
       font-size: 0.86rem;
       line-height: 1.55;
     }
-    .status {
+    .puppets-explorer .status {
       padding: 24px;
       color: var(--cp-text-muted);
     }
-    .status.error { color: var(--cp-danger); }
+    .puppets-explorer .status.error { color: var(--cp-danger); }
 
-    .hljs { color: var(--cp-text); background: transparent; }
-    .hljs-comment, .hljs-quote { color: var(--cp-text-muted); font-style: italic; }
-    .hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-type {
+    .puppets-explorer .hljs { color: var(--cp-text); background: var(--cp-surface); }
+    .puppets-explorer .hljs-comment,
+    .puppets-explorer .hljs-quote { color: var(--cp-text-muted); font-style: italic; }
+    .puppets-explorer .hljs-keyword,
+    .puppets-explorer .hljs-selector-tag,
+    .puppets-explorer .hljs-literal,
+    .puppets-explorer .hljs-type {
       color: var(--cp-accent);
       font-weight: 700;
     }
-    .hljs-string, .hljs-regexp, .hljs-template-variable { color: var(--cp-success); }
-    .hljs-number, .hljs-symbol, .hljs-bullet { color: var(--cp-warning); }
-    .hljs-title, .hljs-section, .hljs-function .hljs-title { color: var(--cp-link); }
-    .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-property { color: var(--cp-text-soft); }
-    .hljs-meta, .hljs-built_in { color: var(--cp-accent); }
-    .hljs-addition { background: var(--cp-accent-soft); color: var(--cp-success); }
-    .hljs-deletion { background: var(--cp-highlight); color: var(--cp-danger); }
+    .puppets-explorer .hljs-string,
+    .puppets-explorer .hljs-regexp,
+    .puppets-explorer .hljs-template-variable { color: var(--cp-success); }
+    .puppets-explorer .hljs-number,
+    .puppets-explorer .hljs-symbol,
+    .puppets-explorer .hljs-bullet { color: var(--cp-warning); }
+    .puppets-explorer .hljs-title,
+    .puppets-explorer .hljs-section,
+    .puppets-explorer .hljs-function .hljs-title { color: var(--cp-link); }
+    .puppets-explorer .hljs-attr,
+    .puppets-explorer .hljs-attribute,
+    .puppets-explorer .hljs-variable,
+    .puppets-explorer .hljs-property { color: var(--cp-text-soft); }
+    .puppets-explorer .hljs-meta,
+    .puppets-explorer .hljs-built_in { color: var(--cp-accent); }
+    .puppets-explorer .hljs-addition {
+      background: var(--cp-accent-soft);
+      color: var(--cp-success);
+    }
+    .puppets-explorer .hljs-deletion {
+      background: var(--cp-highlight);
+      color: var(--cp-danger);
+    }
 
     @media (max-width: 760px) {
-      .shell { padding: 16px; }
-      .topbar { display: block; }
-      .back { display: inline-block; margin-top: 12px; }
-      .workspace { grid-template-columns: 1fr; }
-      .sidebar {
+      .doc:has(> .puppets-explorer) {
+        width: min(100% - 16px, 1440px);
+      }
+      .puppets-explorer { padding: 16px; }
+      .puppets-explorer .workspace { grid-template-columns: 1fr; }
+      .puppets-explorer .sidebar {
         border-right: 0;
         border-bottom: 1px solid var(--cp-border);
       }
-      .tree { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .folder { grid-column: 1 / -1; }
-      .file { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .viewerbar { align-items: flex-start; flex-direction: column; }
+      .puppets-explorer .tree { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .puppets-explorer .folder { grid-column: 1 / -1; }
+      .puppets-explorer .file {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .puppets-explorer .viewerbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
     }
-  </style>
-</head>
-<body>
-  <main class="shell">
-    <header class="topbar">
-      <div>
-        <p class="eyebrow">Canonical example</p>
-        <h1>Puppets workflow explorer</h1>
-        <p class="subtitle">
-          Browse the complete copyable controller, reusable workflows, and extracted
-          JavaScript implementation.
-        </p>
-      </div>
-      <a class="back" href="./">Back to Puppets docs</a>
-    </header>
-
+</style>
+<div class="puppets-explorer">
     <section class="workspace" aria-label="Puppets canonical files">
       <aside class="sidebar">
         <h2>Files</h2>
@@ -294,9 +296,9 @@
         </div>
       </article>
     </section>
-  </main>
+</div>
 
-  <script>
+<script>
     const files = [
       {
         group: ".github/workflows",
@@ -551,6 +553,4 @@
     renderTree();
     const requested = new URLSearchParams(window.location.search).get("file");
     openFile(files.find(file => file.name === requested) || files[0]);
-  </script>
-</body>
-</html>
+</script>
