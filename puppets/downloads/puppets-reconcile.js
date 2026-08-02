@@ -175,13 +175,32 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
-  // Post a plain comment (skipping empty bodies and dry-run).
-  async function comment(repo, issueNumber, body) {
+  // Write or update a comment using GraphQL mutations, which work with either
+  // issues=write or pull_requests=write fine-grained PAT permissions (unlike the
+  // REST issues comment endpoint, which specifically requires issues=write).
+  async function writeComment(subjectNodeId, existingCommentNodeId, body) {
+    if (existingCommentNodeId) {
+      await github.graphql(`
+        mutation($id: ID!, $body: String!) {
+          updateIssueComment(input: { id: $id, body: $body }) {
+            issueComment { id }
+          }
+        }`, { id: existingCommentNodeId, body });
+    } else {
+      await github.graphql(`
+        mutation($id: ID!, $body: String!) {
+          addComment(input: { subjectId: $id, body: $body }) {
+            commentEdge { node { id } }
+          }
+        }`, { id: subjectNodeId, body });
+    }
+  }
+
+  // Post a plain comment on an issue or PR (skipping empty bodies and dry-run).
+  async function comment(repo, subjectNodeId, body) {
     if (!body) return;
     if (!dryRun) {
-      await github.rest.issues.createComment({
-        owner, repo, issue_number: issueNumber, body,
-      });
+      await writeComment(subjectNodeId, null, body);
     }
   }
 
@@ -215,7 +234,7 @@ module.exports = async ({ github, context, core }) => {
   // body is the base prompt for that step (from .github/puppets/prompts/<step>.md) followed
   // by the managed repo's optional per-repo guidance, clearly attributed to its source file.
   // Idempotent: the hidden marker lets repeated runs update one comment instead of stacking.
-  async function upsertStepInstructions(step, marker, heading, repo, targetNumber, defaultBranch, perRepo) {
+  async function upsertStepInstructions(step, marker, heading, repo, targetNumber, subjectNodeId, defaultBranch, perRepo) {
     const base = prompts[step] || '';
     if (!base && !perRepo?.content) return; // nothing to say for this step
     const parts = [marker, `### ${heading}`, ''];
@@ -242,15 +261,7 @@ module.exports = async ({ github, context, core }) => {
       candidate.user?.login?.toLowerCase() === automationLogin &&
       candidate.body?.includes(marker)
     );
-    if (existing) {
-      await github.rest.issues.updateComment({
-        owner, repo, comment_id: existing.id, body,
-      });
-    } else {
-      await github.rest.issues.createComment({
-        owner, repo, issue_number: targetNumber, body,
-      });
-    }
+    await writeComment(subjectNodeId, existing?.node_id ?? null, body);
   }
 
   async function latestApprovalEvent(repo, issueNumber) {
@@ -380,18 +391,14 @@ module.exports = async ({ github, context, core }) => {
       owner, repo, issue_number: prNumber, per_page: 100,
     });
     const marker = comments.find(c => c.body?.includes(conflictMarker));
-    if (!marker) return { attempts: 0, commentId: null };
+    if (!marker) return { attempts: 0, commentNodeId: null };
     const match = marker.body.match(/attempts:\s*(\d+)/);
-    return { attempts: match ? Number.parseInt(match[1], 10) : 0, commentId: marker.id };
+    return { attempts: match ? Number.parseInt(match[1], 10) : 0, commentNodeId: marker.node_id };
   }
-  async function setConflictAttempts(repo, prNumber, attempts, note, existingId) {
+  async function setConflictAttempts(repo, prNodeId, attempts, note, existingCommentNodeId) {
     const body = `${conflictMarker}\n**Puppets — merge conflict** · attempts: ${attempts}/${conflictRetries}\n${note}`;
     if (dryRun) return;
-    if (existingId) {
-      await github.rest.issues.updateComment({ owner, repo, comment_id: existingId, body });
-    } else {
-      await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
-    }
+    await writeComment(prNodeId, existingCommentNodeId, body);
   }
 
   // Re-engage the Copilot coding agent on an existing PR by re-asserting its
@@ -406,7 +413,7 @@ module.exports = async ({ github, context, core }) => {
         }
       }`, { assignableId: pr.id, actorIds });
     if (directive) {
-      await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body: directive });
+      await writeComment(pr.id, null, directive);
     }
   }
 
@@ -453,11 +460,11 @@ module.exports = async ({ github, context, core }) => {
         }
       }
     } else if (!wasDraft && pr.mergeable === 'CONFLICTING') {
-      const { attempts, commentId } = await getConflictAttempts(repo, pr.number);
+      const { attempts, commentNodeId } = await getConflictAttempts(repo, pr.number);
       if (attempts >= conflictRetries) {
         console.log(`#${issue.number}: PR #${pr.number} conflict unresolved after ${attempts} -> needs-human`);
         await setState(repo, issue, 'puppets:needs-human');
-        await setConflictAttempts(repo, pr.number, attempts, 'Escalated to a human — automated resolution exhausted.', commentId);
+        await setConflictAttempts(repo, pr.id, attempts, 'Escalated to a human — automated resolution exhausted.', commentNodeId);
         waiting.push({ repo, number: issue.number, title: `${issue.title} (needs-human: merge conflict on PR #${pr.number})` });
       } else {
         const next = attempts + 1;
@@ -467,7 +474,7 @@ module.exports = async ({ github, context, core }) => {
           await repromptCopilot(repo, pr, botIdRef.id,
             render(prompts.conflict, { attempt: next, total: conflictRetries }));
         }
-        await setConflictAttempts(repo, pr.number, next, 'Asked Copilot to resolve the conflict on its branch.', commentId);
+        await setConflictAttempts(repo, pr.id, next, 'Asked Copilot to resolve the conflict on its branch.', commentNodeId);
         await setState(repo, issue, 'puppets:needs-work');
         return;
       }
@@ -478,10 +485,14 @@ module.exports = async ({ github, context, core }) => {
     //    review step is itself LLM-driven. The marker keeps this to a single comment.
     if (!labels.has('puppets:in-review') && !labels.has('puppets:needs-human')) {
       console.log(`#${issue.number}: PR #${pr.number} ready for review -> in-review`);
-      await upsertStepInstructions(
-        'review', reviewMarker, 'Puppets review instructions',
-        repo, pr.number, defaultBranch, reviewInstructions
-      );
+      try {
+        await upsertStepInstructions(
+          'review', reviewMarker, 'Puppets review instructions',
+          repo, pr.number, pr.id, defaultBranch, reviewInstructions
+        );
+      } catch (error) {
+        core.warning(`  review instructions failed for ${repo}#${pr.number}: ${error.message}`);
+      }
       await setState(repo, issue, 'puppets:in-review');
     }
   }
@@ -534,7 +545,7 @@ module.exports = async ({ github, context, core }) => {
           await removeLabel(repo, issue.number, 'puppets:approved', labels);
           await comment(
             repo,
-            issue.number,
+            issue.node_id,
             render(prompts.invalidApproval, { reason: approval.reason })
           );
           continue;
@@ -547,10 +558,14 @@ module.exports = async ({ github, context, core }) => {
         console.log(`#${issue.number}: approved by ${approval.actor}`);
 
         if (!alreadyAssigned) {
-          await upsertStepInstructions(
-            'implementation', implementationMarker, 'Puppets implementation instructions',
-            repo, issue.number, defaultBranch, implementationInstructions
-          );
+          try {
+            await upsertStepInstructions(
+              'implementation', implementationMarker, 'Puppets implementation instructions',
+              repo, issue.number, issue.node_id, defaultBranch, implementationInstructions
+            );
+          } catch (error) {
+            core.warning(`  implementation instructions failed for ${repo}#${issue.number}: ${error.message}`);
+          }
           if (!dryRun) {
             botId ??= await getCopilotBotId(repo);
             if (!botId) {
@@ -580,7 +595,7 @@ module.exports = async ({ github, context, core }) => {
       if (!hasEnoughDetail(issue)) {
         console.log(`#${issue.number}: needs more information`);
         await setState(repo, issue, 'puppets:needs-info');
-        await comment(repo, issue.number, prompts.needsInfo);
+        await comment(repo, issue.node_id, prompts.needsInfo);
       }
     }
 
