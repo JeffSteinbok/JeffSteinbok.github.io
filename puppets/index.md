@@ -18,6 +18,8 @@ nav:
     url: "#repository-setup"
   - label: Run your own
     url: "#run-your-own-controller"
+  - label: Roadmap
+    url: "#roadmap"
   - label: Source browser
     url: "/puppets/explorer.html"
 ---
@@ -72,6 +74,26 @@ A single scheduled reconciler watches the configured repositories. On each pass 
 current state of every issue and pull request (from its labels) and nudges it one step
 further. Because the state lives in labels, re-running the reconciler is always safe — it
 simply re-derives where each item is and picks up where it left off.
+
+### Triggering a run
+
+Puppets is **poll-based, not event-driven** — nothing happens the instant you file or label
+an issue. Instead the reconciler runs and reconciles every repository in the troupe at once:
+
+- **On a schedule.** The controller runs on a daily cron, so approvals and other label
+  changes are picked up on the next scheduled pass.
+- **On demand.** Trigger the **Puppets Lifecycle** workflow manually from the Actions tab
+  (or `gh workflow run puppets-lifecycle.yml`) whenever you want changes applied immediately
+  instead of waiting for the schedule. The manual trigger accepts inputs:
+  - `dry_run` — report the transitions each item *would* take without changing anything.
+  - `max_issues_per_repo` — how many approved issues to assign per repository in one pass
+    (defaults to a conservative `1`, so approving several issues at once rolls them out over
+    successive runs).
+  - `conflict_retries` — how many times Copilot is asked to resolve a merge conflict before
+    the item escalates to a human.
+
+Running manually with `dry_run` enabled is the recommended way to preview a change before it
+touches live issues.
 
 ### The human gate
 
@@ -239,6 +261,21 @@ human:
 - **New issues to review** — items filed since the last run that haven't been approved or
   dismissed yet, so nothing slips through unseen.
 - **Waiting on you** — items parked on a human decision (`puppets:needs-human`).
+
+## Roadmap
+
+Puppets today is deliberately a **single central reconciler that polls on a schedule** — one
+place holds the configuration and credentials, every managed repository stays completely free
+of Puppets-specific workflow files, and re-running is always safe because state is re-derived
+from labels. The tradeoff is latency: changes are applied on the next pass rather than the
+instant a label changes.
+
+The natural next step is an **optional real-time trigger** — a lightweight, opt-in hook so
+that approving an issue (or a pull request opening or its checks completing) kicks off a
+reconciliation within seconds, while the scheduled reconciler stays on as the safety net that
+recovers any missed event and runs the time-based passes. Poll-first was chosen on purpose:
+it is simpler, self-healing, and keeps every repository zero-footprint; real-time reaction is
+an enhancement layered on top rather than a replacement.
 
 ## Security posture
 
