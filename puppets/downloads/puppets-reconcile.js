@@ -33,6 +33,8 @@
  *   CONFLICT_RETRIES         — how many times Copilot is asked to resolve a conflict
  *                              before the item is escalated to a human.
  *   INBOX_FALLBACK_HOURS     — lookback window for the "new issues" digest on the first run.
+ *   PUPPETS_STALE_HOURS      — age threshold (in hours) after which an un-triaged issue is
+ *                              re-surfaced in the digest as stale (default: 72).
  *   DRY_RUN                  — when 'true', log every intended mutation but write nothing.
  */
 module.exports = async ({ github, context, core }) => {
@@ -114,6 +116,9 @@ module.exports = async ({ github, context, core }) => {
   // freshly filed issue is announced exactly once and old backlog is never swept.
   // Falls back to a fixed lookback when there is no prior run (e.g. the first run).
   const inboxFallbackHours = Math.max(1, Number.parseInt(process.env.INBOX_FALLBACK_HOURS, 10) || 24);
+  // Stale threshold: un-triaged issues older than this are re-surfaced every run.
+  const staleHours = Math.max(1, Number.parseInt(process.env.PUPPETS_STALE_HOURS, 10) || 72);
+  const staleThreshold = new Date(Date.now() - staleHours * 3600 * 1000);
   let inboxSince;
   try {
     const { data: runList } = await github.rest.actions.listWorkflowRuns({
@@ -499,6 +504,8 @@ module.exports = async ({ github, context, core }) => {
 
   const waiting = [];
   const inbox = [];
+  const inboxKeys = new Set(); // tracks `${repo}#${number}` — used to de-dup stale list
+  const stale = [];
   let assigned = 0;
 
   for (const repo of repos) {
@@ -535,6 +542,14 @@ module.exports = async ({ github, context, core }) => {
       if (new Date(issue.created_at) > inboxSince &&
           ![...labels].some(label => label.startsWith('puppets:'))) {
         inbox.push({ repo, number: issue.number, title: issue.title });
+        inboxKeys.add(`${repo}#${issue.number}`);
+      }
+      // Stale un-triaged: no puppets:* label, older than staleHours, not in the new-issues
+      // inbox (de-duped by key so a brand-new issue never appears in both sections).
+      if (![...labels].some(label => label.startsWith('puppets:')) &&
+          new Date(issue.created_at) <= staleThreshold &&
+          !inboxKeys.has(`${repo}#${issue.number}`)) {
+        stale.push({ repo, number: issue.number, title: issue.title });
       }
       if (labels.has('puppets:no-auto')) continue;
 
@@ -626,10 +641,13 @@ module.exports = async ({ github, context, core }) => {
   if (inbox.length) {
     sections.push(`**🆕 New issues to review (${inbox.length})** — approve with \`puppets:approved\` or ignore:\n${renderList(inbox)}`);
   }
+  if (stale.length) {
+    sections.push(`**🔁 Stale un-triaged issues (${stale.length})** — still needs \`puppets:approved\` or \`puppets:no-auto\`:\n${renderList(stale)}`);
+  }
   if (waiting.length) {
     sections.push(`**⏳ Needs a decision (${waiting.length})**:\n${renderList(waiting)}`);
   }
-  const attentionCount = inbox.length + waiting.length;
+  const attentionCount = inbox.length + stale.length + waiting.length;
   const waitingMessage = sections.length === 0
     ? 'No issues currently need your attention.'
     : sections.join('\n\n');

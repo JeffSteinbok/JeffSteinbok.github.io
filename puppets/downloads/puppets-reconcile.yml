@@ -38,6 +38,11 @@ on:
         required: false
         default: 'puppets-lifecycle.yml'
         type: string
+      puppets_stale_hours:
+        description: 'Hours after which an un-triaged issue is re-surfaced as stale'
+        required: false
+        default: '72'
+        type: string
     secrets:
       token:
         description: 'Fine-grained PAT with access to the managed repositories'
@@ -85,6 +90,7 @@ jobs:
           MAX_ISSUES_PER_REPO: ${{ inputs.max_issues_per_repo }}
           CONFLICT_RETRIES: ${{ inputs.conflict_retries }}
           INBOX_FALLBACK_HOURS: '24'
+          PUPPETS_STALE_HOURS: ${{ inputs.puppets_stale_hours }}
         with:
           github-token: ${{ secrets.token }}
           script: |
