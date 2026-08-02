@@ -423,15 +423,29 @@ module.exports = async ({ github, context, core }) => {
       per_page: 100,
     });
     const blocked = runs.filter(run => run.conclusion === 'action_required');
+    let rerunCount = 0;
     for (const run of blocked) {
       console.log(`  workflow ${run.name || run.id} action_required -> rerun`);
       if (!dryRun) {
-        await github.rest.actions.reRunWorkflow({
-          owner, repo, run_id: run.id,
-        });
+        try {
+          await github.rest.actions.reRunWorkflow({
+            owner, repo, run_id: run.id,
+          });
+          rerunCount++;
+        } catch (error) {
+          if (error.status === 403 && error.message.includes('Resource not accessible by personal access token')) {
+            core.warning(
+              `Could not rerun ${repo} workflow ${run.id}: the controller PAT needs Actions: write permission.`
+            );
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        rerunCount++;
       }
     }
-    return blocked.length;
+    return rerunCount;
   }
 
   async function markPrReady(prId) {
