@@ -33,6 +33,11 @@ on:
         required: false
         default: '2'
         type: string
+      enable_curation:
+        description: 'Run the M2 curation pass (GitHub Models dedupe + auto-label) before assigning Copilot'
+        required: false
+        default: true
+        type: boolean
       inbox_workflow_id:
         description: 'Controller workflow filename used to determine the previous run'
         required: false
@@ -57,6 +62,7 @@ on:
 
 permissions:
   contents: read
+  models: read
 
 jobs:
   bootstrap-labels:
@@ -89,6 +95,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
           MAX_ISSUES_PER_REPO: ${{ inputs.max_issues_per_repo }}
           CONFLICT_RETRIES: ${{ inputs.conflict_retries }}
+          ENABLE_CURATION: ${{ inputs.enable_curation }}
           INBOX_FALLBACK_HOURS: '24'
           PUPPETS_STALE_HOURS: ${{ inputs.puppets_stale_hours }}
         with:

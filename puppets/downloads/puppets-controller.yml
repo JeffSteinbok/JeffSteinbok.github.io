@@ -24,6 +24,11 @@ on:
         required: false
         default: '2'
         type: string
+      enable_curation:
+        description: 'Run M2 curation (GitHub Models dedupe + auto-label) before assigning Copilot. Set false for M1-parity.'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -41,6 +46,7 @@ jobs:
       dry_run: ${{ inputs.dry_run || false }}
       max_issues_per_repo: ${{ inputs.max_issues_per_repo || '1' }}
       conflict_retries: ${{ inputs.conflict_retries || '2' }}
+      enable_curation: ${{ inputs.enable_curation != false }}
       inbox_workflow_id: 'puppets-controller.yml'
     secrets:
       token: ${{ secrets.PUPPETS_TOKEN }}

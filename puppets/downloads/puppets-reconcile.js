@@ -14,8 +14,9 @@
  * forward-only, which makes repeated/overlapping runs safe.
  *
  * Lifecycle (one active label at a time):
- *   (no label) → needs-info → (cleared) → approved → claimed → in-review → done
+ *   (no label) → needs-info → (cleared) → approved → curating → ready → claimed → in-review → done
  *   with side branches: needs-work (conflict remediation) and needs-human (escalation).
+ *   In M1-parity mode (ENABLE_CURATION=false): approved → claimed directly.
  *
  * Security model: an issue's title/body are treated as untrusted data, never as
  * instructions. Nothing acts on an item until a human applies `puppets:approved`,
@@ -36,6 +37,9 @@
  *   PUPPETS_STALE_HOURS      — age threshold (in hours) after which an un-triaged issue is
  *                              re-surfaced in the digest as stale (default: 72).
  *   DRY_RUN                  — when 'true', log every intended mutation but write nothing.
+ *   ENABLE_CURATION          — when 'false', skip curation and assign Copilot directly
+ *                              (M1-parity mode). Any other value (default) enables M2
+ *                              curation via GitHub Models before assigning Copilot.
  */
 module.exports = async ({ github, context, core }) => {
   const fs = require('fs');
@@ -64,6 +68,7 @@ module.exports = async ({ github, context, core }) => {
   // instruction comment this automation posts for a given step.
   const implementationMarker = '<!-- puppets:implementation-instructions:v1 -->';
   const reviewMarker = '<!-- puppets:review-instructions:v1 -->';
+  const curationMarker = '<!-- puppets:curation:v1 -->';
   // Every lifecycle label. Exactly one is active on an item at a time; `setState`
   // enforces that by removing the others. Order is informational only.
   const stateLabels = [
@@ -110,6 +115,7 @@ module.exports = async ({ github, context, core }) => {
     conflict: loadPrompt('conflict'),
     needsInfo: loadPrompt('needs-info'),
     invalidApproval: loadPrompt('invalid-approval'),
+    curation: loadPrompt('curation'),
   };
 
   // "Inbox" cutoff: surface issues filed since this workflow's previous run, so a
@@ -422,6 +428,188 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
+  // ── M2 Curation ──────────────────────────────────────────────────────────────
+
+  // Call GitHub Models (OpenAI-compatible) with a system prompt and user message.
+  // Returns the raw content string from the first choice.
+  // Throws on HTTP or API errors so the caller can handle the failure gracefully.
+  async function callModels(systemPrompt, userMessage) {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) throw new Error('GITHUB_TOKEN is not set; cannot call GitHub Models');
+    const response = await fetch('https://models.github.ai/inference/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userMessage },
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`GitHub Models API returned ${response.status}: ${text.slice(0, 300)}`);
+    }
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content ?? '';
+  }
+
+  // Run agentic curation on an issue: abuse screen, dedupe, and auto-labeling.
+  // Called after the issue has already been moved to `puppets:curating`.
+  // On success: transitions the issue to `puppets:ready` or `puppets:needs-human`,
+  // or closes it if it is a duplicate.
+  // Throws on unrecoverable errors so the caller can roll back to `puppets:approved`.
+  async function curateIssue(repo, issue, allIssues, repoLabelNames) {
+    if (!prompts.curation) {
+      // Curation prompt not deployed — skip analysis and mark ready immediately.
+      core.warning(`${repo}#${issue.number}: curation.md not found; marking ready without analysis.`);
+      await setState(repo, issue, 'puppets:ready');
+      return;
+    }
+
+    // Compact list of other open issues for near-duplicate detection (max 40 entries).
+    const otherIssues = allIssues
+      .filter(i => !i.pull_request && i.number !== issue.number)
+      .slice(0, 40)
+      .map(i => `#${i.number}: ${String(i.title).replace(/\n/g, ' ').slice(0, 100)}`)
+      .join('\n');
+
+    // Offer only labels that already exist in the repo plus the standard type:* set.
+    const availableLabels = [...repoLabelNames]
+      .filter(l => l.startsWith('type:') || l.startsWith('area:'))
+      .sort()
+      .join(', ') || 'type:bug, type:feature, type:chore';
+
+    const currentLabels = [...issueLabels(issue)]
+      .filter(l => !l.startsWith('puppets:'))
+      .join(', ') || '(none)';
+
+    const userMessage = [
+      `Repository: ${owner}/${repo}`,
+      `Issue #${issue.number}: ${issue.title}`,
+      '',
+      'Body:',
+      (issue.body || '(empty)').slice(0, 2000),
+      '',
+      `Current labels: ${currentLabels}`,
+      `Available labels for tagging: ${availableLabels}`,
+      '',
+      'Other open issues in this repository (for duplicate detection):',
+      otherIssues || '(none)',
+    ].join('\n');
+
+    // Call GitHub Models — may throw; caller catches and rolls back to approved.
+    const raw = await callModels(prompts.curation, userMessage);
+
+    let verdict;
+    try {
+      verdict = JSON.parse(raw);
+    } catch {
+      throw new Error(`Models API returned invalid JSON: ${raw.slice(0, 300)}`);
+    }
+
+    const decision = verdict?.decision;
+    if (!['ready', 'duplicate', 'needs-human'].includes(decision)) {
+      throw new Error(`Unexpected curation decision "${decision}"; expected ready|duplicate|needs-human`);
+    }
+
+    // Build and upsert the sticky curation verdict comment.
+    const commentLines = [
+      curationMarker,
+      `**Puppets curation** · verdict: \`${decision}\``,
+      '',
+    ];
+    if (verdict.reason) commentLines.push(`> ${verdict.reason}`, '');
+    if (Array.isArray(verdict.labels) && verdict.labels.length) {
+      commentLines.push(`- tags: ${verdict.labels.join(', ')}`);
+    }
+    if (verdict.duplicate_of) {
+      commentLines.push(`- duplicate-of: #${verdict.duplicate_of}`);
+    }
+    if (verdict.for_human) {
+      commentLines.push('', '---', `**For the human:** ${verdict.for_human}`);
+    }
+    const curationComment = commentLines.join('\n');
+
+    if (!dryRun) {
+      const comments = await github.paginate(github.rest.issues.listComments, {
+        owner, repo, issue_number: issue.number, per_page: 100,
+      });
+      const existing = comments.find(c =>
+        c.user?.login?.toLowerCase() === automationLogin && c.body?.includes(curationMarker)
+      );
+      if (existing) {
+        await github.rest.issues.updateComment({
+          owner, repo, comment_id: existing.id, body: curationComment,
+        });
+      } else {
+        await github.rest.issues.createComment({
+          owner, repo, issue_number: issue.number, body: curationComment,
+        });
+      }
+    }
+
+    if (decision === 'duplicate') {
+      const dupeNum = verdict.duplicate_of;
+      if (!dupeNum) {
+        // Model said duplicate but gave no issue number — bias toward ready.
+        core.warning(`${repo}#${issue.number}: duplicate verdict has no duplicate_of; treating as ready.`);
+        await setState(repo, issue, 'puppets:ready');
+        return;
+      }
+      console.log(`#${issue.number}: duplicate of #${dupeNum} → closing`);
+      if (!dryRun) {
+        await github.rest.issues.update({
+          owner, repo, issue_number: issue.number,
+          state: 'closed', state_reason: 'not_planned',
+        });
+      }
+      // Issue is now closed; no further label transition needed.
+
+    } else if (decision === 'needs-human') {
+      console.log(`#${issue.number}: curation escalated → needs-human`);
+      waiting.push({
+        repo, number: issue.number,
+        title: `${issue.title} (needs-human: curation — ${verdict.reason || 'see comment'})`,
+      });
+      await setState(repo, issue, 'puppets:needs-human');
+
+    } else {
+      // decision === 'ready': apply auto-labels, then mark ready.
+      const suggestedLabels = Array.isArray(verdict.labels) ? verdict.labels : [];
+      const currentIssueLabels = issueLabels(issue);
+      for (const label of suggestedLabels) {
+        if (currentIssueLabels.has(label)) continue; // already present
+        if (repoLabelNames.has(label)) {
+          // Existing label — apply directly.
+          await addLabel(repo, issue.number, label);
+        } else if (/^area:[a-z0-9][a-z0-9-]*$/.test(label)) {
+          // Safe new area:* label — create it, then apply.
+          console.log(`  + create area label ${label}`);
+          if (!dryRun) {
+            await github.rest.issues.createLabel({
+              owner, repo, name: label, color: '0075ca',
+              description: `Issues in the ${label.slice(5)} area.`,
+            });
+          }
+          await addLabel(repo, issue.number, label);
+        }
+        // Any other unknown label name is silently skipped for safety.
+      }
+      await setState(repo, issue, 'puppets:ready');
+      console.log(`#${issue.number}: curation passed → ready`);
+    }
+  }
+
+
   // Advance an already-claimed item along claimed -> in-review -> done based on
   // its PR, and keep the PR mergeable for the configured merge policy.
   // Runs over open AND closed issues (a merged PR auto-closes the issue, so `done`
@@ -527,6 +715,11 @@ module.exports = async ({ github, context, core }) => {
       console.log(`Skipping ${owner}/${repo} because its instructions are invalid.`);
       continue;
     }
+    // Fetch existing repo labels once for curation auto-labeling.
+    const repoLabelsList = await github.paginate(github.rest.issues.listLabelsForRepo, {
+      owner, repo, per_page: 100,
+    });
+    const repoLabelNames = new Set(repoLabelsList.map(l => l.name));
     const issues = await github.paginate(github.rest.issues.listForRepo, {
       owner, repo, state: 'open', sort: 'updated', direction: 'desc', per_page: 100,
     });
@@ -566,11 +759,65 @@ module.exports = async ({ github, context, core }) => {
           continue;
         }
 
+        // M1 parity mode: skip curation and assign Copilot directly.
+        if (process.env.ENABLE_CURATION === 'false') {
+          if (assignedInRepo >= maxPerRepo) continue;
+          console.log(`#${issue.number}: approved by ${approval.actor} (curation disabled)`);
+          const alreadyAssigned = (issue.assignees || []).some(assignee =>
+            ['copilot', 'copilot-swe-agent'].includes(assignee.login.toLowerCase())
+          );
+          if (!alreadyAssigned) {
+            await upsertStepInstructions(
+              'implementation', implementationMarker, 'Puppets implementation instructions',
+              repo, issue.number, defaultBranch, implementationInstructions
+            );
+            if (!dryRun) {
+              botId ??= await getCopilotBotId(repo);
+              if (!botId) {
+                throw new Error(`Copilot coding agent is not assignable in ${owner}/${repo}`);
+              }
+              await assignCopilot(issue, botId);
+            }
+          }
+          await setState(repo, issue, 'puppets:claimed');
+          assignedInRepo++;
+          assigned++;
+          console.log(`  ${dryRun ? 'would assign' : 'assigned'} Copilot`);
+          continue;
+        }
+
+        // M2: move to curating, then run curation. On failure, roll back to
+        // approved so the item is retried on the next reconciler run.
+        console.log(`#${issue.number}: approved by ${approval.actor} → curating`);
+        await setState(repo, issue, 'puppets:curating');
+        try {
+          await curateIssue(repo, issue, issues, repoLabelNames);
+        } catch (error) {
+          core.warning(`Curation failed for ${repo}#${issue.number}: ${error.message}. Rolling back to approved.`);
+          await setState(repo, issue, 'puppets:approved');
+        }
+        continue;
+      }
+
+      // Recovery: an issue left in `curating` from a previous failed run.
+      if (labels.has('puppets:curating')) {
+        console.log(`#${issue.number}: retrying curation (was stuck in curating)`);
+        try {
+          await curateIssue(repo, issue, issues, repoLabelNames);
+        } catch (error) {
+          core.warning(`Curation retry failed for ${repo}#${issue.number}: ${error.message}.`);
+          // Leave in curating; will retry on the next run.
+        }
+        continue;
+      }
+
+      // Claim and assign a ready item (result of a successful curation pass).
+      if (labels.has('puppets:ready')) {
         if (assignedInRepo >= maxPerRepo) continue;
         const alreadyAssigned = (issue.assignees || []).some(assignee =>
           ['copilot', 'copilot-swe-agent'].includes(assignee.login.toLowerCase())
         );
-        console.log(`#${issue.number}: approved by ${approval.actor}`);
+        console.log(`#${issue.number}: ready → claiming`);
 
         if (!alreadyAssigned) {
           try {
@@ -629,7 +876,7 @@ module.exports = async ({ github, context, core }) => {
     }
     const botIdRef = { id: botId };
     for (const issue of inFlightByNumber.values()) {
-      await reconcileInFlight(repo, issue, botIdRef);
+      await reconcileInFlight(repo, issue, defaultBranch, reviewInstructions, botIdRef);
     }
   }
 
