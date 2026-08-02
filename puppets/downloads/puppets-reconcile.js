@@ -31,6 +31,7 @@
  *   PUPPETS_APPROVAL_ACTORS  — newline-separated allowlist of logins permitted to approve.
  *   PUPPETS_INBOX_WORKFLOW_ID — this workflow's file id, used to find the previous run.
  *   MAX_ISSUES_PER_REPO      — cap on new Copilot assignments per repo per run.
+ *   MAX_IN_FLIGHT_PER_REPO   — cap on claimed/in-review/needs-work issues per repo.
  *   CONFLICT_RETRIES         — how many times Copilot is asked to resolve a conflict
  *                              before the item is escalated to a human.
  *   INBOX_FALLBACK_HOURS     — lookback window for the "new issues" digest on the first run.
@@ -47,6 +48,7 @@ module.exports = async ({ github, context, core }) => {
   const owner = process.env.PUPPETS_OWNER.trim();
   const dryRun = process.env.DRY_RUN === 'true';
   const maxPerRepo = Number.parseInt(process.env.MAX_ISSUES_PER_REPO, 10);
+  const maxInFlightPerRepo = Number.parseInt(process.env.MAX_IN_FLIGHT_PER_REPO, 10);
   // At least one conflict-resolution attempt; default to 2 when unset/invalid.
   const conflictRetries = Math.max(1, Number.parseInt(process.env.CONFLICT_RETRIES, 10) || 2);
   const repos = process.env.PUPPETS_REPOSITORIES.trim().split('\n').map(r => r.trim()).filter(Boolean);
@@ -86,6 +88,9 @@ module.exports = async ({ github, context, core }) => {
   // Fail fast on misconfiguration rather than silently doing nothing / everything.
   if (!Number.isInteger(maxPerRepo) || maxPerRepo < 1) {
     throw new Error('max_issues_per_repo must be a positive integer');
+  }
+  if (!Number.isInteger(maxInFlightPerRepo) || maxInFlightPerRepo < 1) {
+    throw new Error('max_in_flight_per_repo must be a positive integer');
   }
   if (!owner || repos.length === 0 || approvalActors.size === 0) {
     throw new Error('owner, repositories, and approval_actors must not be empty');
@@ -186,6 +191,20 @@ module.exports = async ({ github, context, core }) => {
     }
   }
 
+  async function setPrState(repo, prNumber, nextState) {
+    const { data: prAsIssue } = await github.rest.issues.get({
+      owner, repo, issue_number: prNumber,
+    });
+    await setState(repo, prAsIssue, nextState);
+  }
+
+  async function setLinkedState(repo, issue, pr, nextState) {
+    // Update the projection first. If PR labeling fails, the authoritative issue remains
+    // in an active state and a later reconciliation can retry the repair.
+    await setPrState(repo, pr.number, nextState);
+    await setState(repo, issue, nextState);
+  }
+
   // Write or update a comment using GraphQL mutations, which work with either
   // issues=write or pull_requests=write fine-grained PAT permissions (unlike the
   // REST issues comment endpoint, which specifically requires issues=write).
@@ -248,12 +267,15 @@ module.exports = async ({ github, context, core }) => {
   async function upsertStepInstructions(step, marker, heading, repo, targetNumber, subjectNodeId, defaultBranch, perRepo) {
     const base = prompts[step] || '';
     if (!base && !perRepo?.content) return; // nothing to say for this step
-    const parts = [marker, `### ${heading}`, ''];
-    if (base) parts.push(base);
+    // Assemble the instruction body, then tuck it inside a collapsed <details> block so it
+    // stays out of the way on the issue/PR thread while remaining fully present in the
+    // comment text (the Copilot coding agent reads the raw body regardless of collapse).
+    const inner = [];
+    if (base) inner.push(base);
     if (perRepo?.content) {
       const sourceUrl =
         `https://github.com/${owner}/${repo}/blob/${defaultBranch}/${perRepo.path}`;
-      parts.push(
+      inner.push(
         '',
         '---',
         `Repository-specific guidance (trusted source: [\`${perRepo.path}\` on \`${defaultBranch}\`](${sourceUrl})):`,
@@ -261,7 +283,15 @@ module.exports = async ({ github, context, core }) => {
         perRepo.content,
       );
     }
-    const body = parts.join('\n');
+    const body = [
+      marker,
+      '<details>',
+      `<summary>${heading} (click to expand)</summary>`,
+      '', // blank line required so GitHub renders the inner Markdown
+      ...inner,
+      '',
+      '</details>',
+    ].join('\n');
     console.log(`  ${step} instructions${perRepo?.content ? ` + ${perRepo.path}@${defaultBranch}` : ''}`);
     if (dryRun) return;
 
@@ -345,7 +375,7 @@ module.exports = async ({ github, context, core }) => {
   // merged PR, then an open non-draft PR, then any open PR, else the newest.
   async function findLinkedPR(repo, issueNumber) {
     const prFields = `
-      number id state isDraft merged mergeable mergeStateStatus headRefName
+      number id state isDraft merged mergeable mergeStateStatus headRefName headRefOid
       assignees(first: 10) { nodes { id login } }
       commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }`;
     const result = await github.graphql(`
@@ -383,6 +413,26 @@ module.exports = async ({ github, context, core }) => {
   }
 
   const rollupState = pr => pr.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state || null;
+
+  async function rerunActionRequiredWorkflows(repo, pr) {
+    const runs = await github.paginate(github.rest.actions.listWorkflowRunsForRepo, {
+      owner,
+      repo,
+      event: 'pull_request',
+      head_sha: pr.headRefOid,
+      per_page: 100,
+    });
+    const blocked = runs.filter(run => run.conclusion === 'action_required');
+    for (const run of blocked) {
+      console.log(`  workflow ${run.name || run.id} action_required -> rerun`);
+      if (!dryRun) {
+        await github.rest.actions.reRunWorkflow({
+          owner, repo, run_id: run.id,
+        });
+      }
+    }
+    return blocked.length;
+  }
 
   async function markPrReady(prId) {
     if (dryRun) return;
@@ -622,11 +672,18 @@ module.exports = async ({ github, context, core }) => {
     if (pr.merged) {
       if (!labels.has('puppets:done')) {
         console.log(`#${issue.number}: PR #${pr.number} merged -> done`);
-        await setState(repo, issue, 'puppets:done');
       }
+      await setLinkedState(repo, issue, pr, 'puppets:done');
       return;
     }
     if (pr.state !== 'OPEN') return; // closed unmerged -> leave for a human
+
+    const rerunCount = await rerunActionRequiredWorkflows(repo, pr);
+    if (rerunCount > 0) {
+      const currentState = stateLabels.find(label => labels.has(label)) || 'puppets:claimed';
+      await setPrState(repo, pr.number, currentState);
+      return;
+    }
 
     // 1. Auto Ready-for-Review: if Copilot left the PR in draft but its checks are
     //    green, it is ready for review and the configured merge policy.
@@ -637,6 +694,8 @@ module.exports = async ({ github, context, core }) => {
         await markPrReady(pr.id);
         wasDraft = true; // mergeability was not computed while draft; defer conflict check
       } else {
+        const currentState = stateLabels.find(label => labels.has(label)) || 'puppets:claimed';
+        await setPrState(repo, pr.number, currentState);
         return; // still a working draft
       }
     }
@@ -656,7 +715,7 @@ module.exports = async ({ github, context, core }) => {
       const { attempts, commentNodeId } = await getConflictAttempts(repo, pr.number);
       if (attempts >= conflictRetries) {
         console.log(`#${issue.number}: PR #${pr.number} conflict unresolved after ${attempts} -> needs-human`);
-        await setState(repo, issue, 'puppets:needs-human');
+        await setLinkedState(repo, issue, pr, 'puppets:needs-human');
         await setConflictAttempts(repo, pr.id, attempts, 'Escalated to a human — automated resolution exhausted.', commentNodeId);
         waiting.push({ repo, number: issue.number, title: `${issue.title} (needs-human: merge conflict on PR #${pr.number})` });
       } else {
@@ -668,7 +727,7 @@ module.exports = async ({ github, context, core }) => {
             render(prompts.conflict, { attempt: next, total: conflictRetries }));
         }
         await setConflictAttempts(repo, pr.id, next, 'Asked Copilot to resolve the conflict on its branch.', commentNodeId);
-        await setState(repo, issue, 'puppets:needs-work');
+        await setLinkedState(repo, issue, pr, 'puppets:needs-work');
         return;
       }
     }
@@ -676,17 +735,19 @@ module.exports = async ({ github, context, core }) => {
     // 3. Otherwise it is open and ready -> in-review. On entering review, hand Copilot the
     //    review prompt (base + per-repo review.md) as a trusted comment on the PR so the
     //    review step is itself LLM-driven. The marker keeps this to a single comment.
-    if (!labels.has('puppets:in-review') && !labels.has('puppets:needs-human')) {
-      console.log(`#${issue.number}: PR #${pr.number} ready for review -> in-review`);
-      try {
-        await upsertStepInstructions(
-          'review', reviewMarker, 'Puppets review instructions',
-          repo, pr.number, pr.id, defaultBranch, reviewInstructions
-        );
-      } catch (error) {
-        core.warning(`  review instructions failed for ${repo}#${pr.number}: ${error.message}`);
+    if (!labels.has('puppets:needs-human')) {
+      if (!labels.has('puppets:in-review')) {
+        console.log(`#${issue.number}: PR #${pr.number} ready for review -> in-review`);
+        try {
+          await upsertStepInstructions(
+            'review', reviewMarker, 'Puppets review instructions',
+            repo, pr.number, pr.id, defaultBranch, reviewInstructions
+          );
+        } catch (error) {
+          core.warning(`  review instructions failed for ${repo}#${pr.number}: ${error.message}`);
+        }
       }
-      await setState(repo, issue, 'puppets:in-review');
+      await setLinkedState(repo, issue, pr, 'puppets:in-review');
     }
   }
 
@@ -723,6 +784,16 @@ module.exports = async ({ github, context, core }) => {
     const issues = await github.paginate(github.rest.issues.listForRepo, {
       owner, repo, state: 'open', sort: 'updated', direction: 'desc', per_page: 100,
     });
+    const inFlightByNumber = new Map();
+    for (const state of ['puppets:claimed', 'puppets:in-review', 'puppets:needs-work']) {
+      const tracked = await github.paginate(github.rest.issues.listForRepo, {
+        owner, repo, state: 'all', labels: state, per_page: 100,
+      });
+      for (const issue of tracked) {
+        if (!issue.pull_request) inFlightByNumber.set(issue.number, issue);
+      }
+    }
+    const inFlightCount = inFlightByNumber.size;
     let assignedInRepo = 0;
     let botId;
 
@@ -762,6 +833,10 @@ module.exports = async ({ github, context, core }) => {
         // M1 parity mode: skip curation and assign Copilot directly.
         if (process.env.ENABLE_CURATION === 'false') {
           if (assignedInRepo >= maxPerRepo) continue;
+          if (inFlightCount + assignedInRepo >= maxInFlightPerRepo) {
+            console.log(`#${issue.number}: in-flight cap reached (${maxInFlightPerRepo})`);
+            continue;
+          }
           console.log(`#${issue.number}: approved by ${approval.actor} (curation disabled)`);
           const alreadyAssigned = (issue.assignees || []).some(assignee =>
             ['copilot', 'copilot-swe-agent'].includes(assignee.login.toLowerCase())
@@ -769,7 +844,7 @@ module.exports = async ({ github, context, core }) => {
           if (!alreadyAssigned) {
             await upsertStepInstructions(
               'implementation', implementationMarker, 'Puppets implementation instructions',
-              repo, issue.number, defaultBranch, implementationInstructions
+              repo, issue.number, issue.node_id, defaultBranch, implementationInstructions
             );
             if (!dryRun) {
               botId ??= await getCopilotBotId(repo);
@@ -814,6 +889,10 @@ module.exports = async ({ github, context, core }) => {
       // Claim and assign a ready item (result of a successful curation pass).
       if (labels.has('puppets:ready')) {
         if (assignedInRepo >= maxPerRepo) continue;
+        if (inFlightCount + assignedInRepo >= maxInFlightPerRepo) {
+          console.log(`#${issue.number}: in-flight cap reached (${maxInFlightPerRepo})`);
+          continue;
+        }
         const alreadyAssigned = (issue.assignees || []).some(assignee =>
           ['copilot', 'copilot-swe-agent'].includes(assignee.login.toLowerCase())
         );
@@ -865,15 +944,6 @@ module.exports = async ({ github, context, core }) => {
     // their PR: claimed -> in-review (PR ready) -> done (PR merged), plus keep the
     // PR mergeable (update stale branches, loop Copilot on conflicts). Query open
     // AND closed issues, since a merged PR closes the issue before we mark it done.
-    const inFlightByNumber = new Map();
-    for (const state of ['puppets:claimed', 'puppets:in-review', 'puppets:needs-work']) {
-      const tracked = await github.paginate(github.rest.issues.listForRepo, {
-        owner, repo, state: 'all', labels: state, per_page: 100,
-      });
-      for (const issue of tracked) {
-        if (!issue.pull_request) inFlightByNumber.set(issue.number, issue);
-      }
-    }
     const botIdRef = { id: botId };
     for (const issue of inFlightByNumber.values()) {
       await reconcileInFlight(repo, issue, defaultBranch, reviewInstructions, botIdRef);

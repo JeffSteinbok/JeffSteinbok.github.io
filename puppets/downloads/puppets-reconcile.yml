@@ -28,6 +28,11 @@ on:
         required: false
         default: '1'
         type: string
+      max_in_flight_per_repo:
+        description: 'Maximum claimed, in-review, or needs-work issues per repository'
+        required: false
+        default: '2'
+        type: string
       conflict_retries:
         description: 'Copilot conflict-resolution attempts before escalating to needs-human'
         required: false
@@ -94,6 +99,7 @@ jobs:
           PUPPETS_INBOX_WORKFLOW_ID: ${{ inputs.inbox_workflow_id }}
           DRY_RUN: ${{ inputs.dry_run }}
           MAX_ISSUES_PER_REPO: ${{ inputs.max_issues_per_repo }}
+          MAX_IN_FLIGHT_PER_REPO: ${{ inputs.max_in_flight_per_repo }}
           CONFLICT_RETRIES: ${{ inputs.conflict_retries }}
           ENABLE_CURATION: ${{ inputs.enable_curation }}
           INBOX_FALLBACK_HOURS: '24'

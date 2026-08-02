@@ -2,11 +2,12 @@ name: Puppets Lifecycle
 
 # Edit this configuration, save the three workflow files under .github/workflows/,
 # save puppets-reconcile.js under .github/scripts/, and add a PUPPETS_TOKEN Actions
-# secret. If you rename this file, update inbox_workflow_id below to the new filename.
+# secret. Copy the six base prompt files into .github/puppets/prompts/. If you rename
+# this file, update inbox_workflow_id below to the new filename.
 
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -18,6 +19,11 @@ on:
         description: 'Maximum approved issues to assign per repository'
         required: false
         default: '1'
+        type: string
+      max_in_flight_per_repo:
+        description: 'Maximum active Puppets issues per repository'
+        required: false
+        default: '2'
         type: string
       conflict_retries:
         description: 'Conflict-resolution attempts before escalating to needs-human'
@@ -45,6 +51,7 @@ jobs:
         YOUR_GITHUB_LOGIN
       dry_run: ${{ inputs.dry_run || false }}
       max_issues_per_repo: ${{ inputs.max_issues_per_repo || '1' }}
+      max_in_flight_per_repo: ${{ inputs.max_in_flight_per_repo || '2' }}
       conflict_retries: ${{ inputs.conflict_retries || '2' }}
       enable_curation: ${{ inputs.enable_curation != false }}
       inbox_workflow_id: 'puppets-controller.yml'
