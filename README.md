@@ -38,5 +38,4 @@ back_link_url: /
 
 Puppets now publishes its own documentation from the public
 [`JeffSteinbok/puppets`](https://github.com/JeffSteinbok/puppets) repository. This site
-keeps only a compatibility page at `/puppets/` and links directly to the dedicated Pages
-site.
+links directly to the dedicated Pages site.
