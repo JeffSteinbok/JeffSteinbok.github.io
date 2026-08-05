@@ -30,12 +30,12 @@ sections:
         title: Jeffopoly Deal
         desc: A real-time multiplayer Monopoly Deal card game built with React, ASP.NET Core &amp; SignalR.
         arrow: View on GitHub →
-      - url: https://github.com/JeffSteinbok/reMarkableSync
+      - url: https://jeffsteinbok.github.io/reMarkableSync/
         external: true
         icon_img: assets/images/remarkablesync-logo.png
         title: reMarkableSync
         desc: Sync reMarkable to PDF and MarkDown via either USB or Wifi.
-        arrow: View on GitHub →
+        arrow: Open the site →
       - url: https://github.com/JeffSteinbok/obsidian-onedrive
         external: true
         icon_img: assets/images/obsidian-onedrive-icon.png
@@ -83,7 +83,7 @@ sections:
         arrow: View on GitHub →
       - url: https://jeffsteinbok.github.io/puppets/
         external: true
-        icon_img: assets/images/puppets.svg
+        icon_img: assets/images/puppetslogo.png
         title: Puppets
         desc: A gated, cloud-native automation that moves GitHub issues from filed to merged after human approval.
         arrow: Open the docs →
