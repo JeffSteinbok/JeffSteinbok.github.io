@@ -36,6 +36,7 @@ back_link_url: /
 # Body is plain Markdown — rendered and wrapped in `.doc` by the layout.
 ```
 
-The `puppets/` folder is produced this way: the private `automation` repo builds
-`docs/public/puppets/index.md`, runs a redaction gate, and pushes it here with a
-Contents-scoped token. See `automation/.github/workflows/docs-publish.yml`.
+Puppets now publishes its own documentation from the public
+[`JeffSteinbok/puppets`](https://github.com/JeffSteinbok/puppets) repository. This site
+keeps only a compatibility page at `/puppets/` and links directly to the dedicated Pages
+site.

@@ -81,9 +81,9 @@ sections:
         title: hass-uiprotectalarms
         desc: HomeAssistant Plugin for Enabling/Disabling Unifi Protect Alarms.
         arrow: View on GitHub →
-      - url: /puppets/
-        external: false
-        icon_img: /puppets/puppetslogo.png
+      - url: https://jeffsteinbok.github.io/puppets/
+        external: true
+        icon_img: assets/images/puppets.svg
         title: Puppets
         desc: A gated, cloud-native automation that moves GitHub issues from filed to merged after human approval.
-        arrow: Read the docs →
+        arrow: Open the docs →
