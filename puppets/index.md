@@ -1,314 +1,130 @@
 ---
 layout: doc
-title: Puppets — gated issue → PR automation
+title: Puppets - gated issue to PR automation
 permalink: /puppets/
 hero_image: /puppets/puppetslogo.png
 header_logo: /puppets/puppetslogo.png
 heading: Puppets
-tagline: Gated issue → PR automation across a troupe of repositories
+tagline: Repository-owned automation with a shared public framework
 mermaid: true
-nav:
-  - label: Why
-    url: "#why-it-exists"
-  - label: How it works
-    url: "#how-it-works"
-  - label: Lifecycle
-    url: "#the-lifecycle"
-  - label: Repository setup
-    url: "#repository-setup"
-  - label: Run your own
-    url: "#run-your-own-controller"
-  - label: Roadmap
-    url: "#roadmap"
-  - label: Source browser
-    url: "/puppets/explorer.html"
 ---
 
-**Puppets is a fully server-side automation harness that turns GitHub issues into merged
-changes — end to end, across an entire troupe of repositories — with human approval before
-work begins.**
+# Puppets
 
-The whole system runs in the cloud. A single central controller reaches into every
-repository it manages, reads each issue's **labels as state**, and drives it through its
-lifecycle: triage → approval → implementation → review → merge. **GitHub's Copilot coding
-agent does the writing** — it's assigned to approved issues and opens real pull requests —
-while GitHub Actions provides the compute. There's no per-repository workflow to install and
-no local process to babysit; a repo joins by being added to the controller's list (and having
-the Copilot coding agent enabled).
+> **Migration status:** The public framework now lives at
+> [`JeffSteinbok/puppets`](https://github.com/JeffSteinbok/puppets), with documentation at
+> [jeffsteinbok.github.io/puppets](https://jeffsteinbok.github.io/puppets/).
+> `obsidian-onedrive` is the first live caller. The source downloads and explorer on this
+> legacy site describe the old central controller and are not the installation model for
+> new repositories.
 
-**Issue labels are the interface.** Instead of a bespoke database or UI, Puppets encodes the
-entire workflow in a small set of `puppets:*` labels. Moving an issue forward — or holding it
-back — is just a label change, which means the whole pipeline is legible, auditable, and
-controllable straight from the GitHub issue view you already use.
+Puppets turns an approved GitHub issue into a reviewed pull request. Each managed repository
+owns a very small workflow that calls a versioned reusable workflow from the shared public
+framework.
 
-**A human owns the approval gate.** Filed issues are untrusted input, so nothing is worked
-on until a maintainer applies `puppets:approved`. Everything after that approval can be
-driven by automation.
+```mermaid
+flowchart LR
+    R[Public managed repository]
+    C[Tiny local caller workflow]
+    P[Public JeffSteinbok/puppets framework]
+    G[Repository-scoped GitHub permissions]
+    R --> C
+    C -->|workflow_call pinned to SHA| P
+    G --> C
+```
 
-[**Browse the canonical workflows and JavaScript source →**](explorer.html)
+## Design principles
 
-## Why it exists
+- **Caller initiated:** the managed repository runs Puppets; no outside controller reaches
+  into it.
+- **Cheap for public repositories:** standard hosted-runner usage is attributed to the
+  public caller and is free.
+- **Shared implementation:** runtime code, default lifecycle data, prompts, schemas, and
+  tests live in one public framework repository.
+- **Locally overridable:** trusted default-branch files under `.github/puppets/` may replace
+  documented settings and prompts or overlay lifecycle data.
+- **Data-driven:** labels, state metadata, transitions, limits, prompts, and feature policy
+  are data rather than hard-coded control flow.
+- **Fail closed:** approval provenance, permission checks, `puppets:no-auto`, trusted-branch
+  loading, and secret isolation are procedural invariants that local data cannot weaken.
 
-The starting point was a fire-and-forget script that assigned an AI agent to issues in one
-shot — no plan, no human gate, no pull-request loop, one repo at a time. Puppets replaces
-that with a **stateful, reviewable lifecycle that scales across many repositories at once**:
+## Repository footprint
 
-> **Related work in progress:** Puppets is related to Jeff's
-> [OpenClaw Engineering Harness](https://octo.steinbok.net/harness.html), which is developing
-> a similar label-driven improvement loop inside Octo. The projects share a human approval
-> gate and GitHub Issues as workflow state, while Puppets focuses on centrally managing a
-> troupe of repositories.
+A managed repository contains:
 
-- **One central, server-side controller** manages every configured repository from a single
-  place — no per-repo workflow and no reconciler logic to maintain in each repo.
-- **AI compute runs in the cloud** — the Copilot coding agent opens real pull requests.
-- **Labels carry the state**, so every step is visible and self-healing: re-running the
-  controller simply re-derives where each issue is and continues.
-- **A human controls the approval gate.** No agent touches an item until it is *approved*.
-- **Every filed item is treated as untrusted input.** Issue text is data, never
-  instructions — it can't tell the automation what to do.
+```text
+.github/workflows/puppets.yml
+.github/puppets/                 optional
+  config.json
+  lifecycle.json
+  prompts/
+```
 
-## How it works
+The workflow owns triggers, explicit permissions, concurrency, and a pinned call to the
+public framework. It contains no lifecycle implementation.
 
-A single scheduled reconciler watches the configured repositories. On each pass it reads the
-current state of every issue and pull request (from its labels) and nudges it one step
-further. Because the state lives in labels, re-running the reconciler is always safe — it
-simply re-derives where each item is and picks up where it left off.
-
-### Triggering a run
-
-Puppets is **poll-based, not event-driven** — nothing happens the instant you file or label
-an issue. Instead the reconciler runs and reconciles every repository in the troupe at once:
-
-- **On a schedule.** The canonical controller runs hourly, so approvals and other label
-  changes are picked up within the next hour.
-- **On demand.** Trigger the **Puppets Lifecycle** workflow manually from the Actions tab
-  (or `gh workflow run puppets-lifecycle.yml`) whenever you want changes applied immediately
-  instead of waiting for the schedule. The manual trigger accepts inputs:
-  - `dry_run` — report the transitions each item *would* take without changing anything.
-  - `max_issues_per_repo` — how many approved issues to assign per repository in one pass
-    (defaults to a conservative `1`, so approving several issues at once rolls them out over
-    successive runs).
-  - `max_in_flight_per_repo` — the maximum number of issues in `claimed`, `in-review`, or
-    `needs-work` at once in each repository (defaults to `2`).
-  - `conflict_retries` — how many times Copilot is asked to resolve a merge conflict before
-    the item escalates to a human.
-  - `enable_curation` — run the GitHub Models curation pass before implementation
-    (enabled by default; disable it for direct approval-to-claim behavior).
-
-Running manually with `dry_run` enabled is the recommended way to preview a change before it
-touches live issues.
-
-### The human gate
-
-**Approval to work it** (`puppets:approved`). A filed item is untrusted; nothing acts on it
-until a trusted maintainer approves it. The automation re-verifies that the person who
-approved actually has write/triage access before proceeding — the approval gate is the
-heart of the security model.
-
-### The lifecycle
+## Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Filed : issue opened
-    Filed --> NeedsInfo : incomplete
-    NeedsInfo --> Filed : author adds detail (auto-cleared)
-
-    Filed --> Approved : ★ human adds puppets#58;approved  (HUMAN GATE)
-
-    Approved --> Curating : GitHub Models screens and classifies
-    Curating --> Ready : safe · non-duplicate · actionable
-    Curating --> NeedsHuman : unsafe or product decision
-    Ready --> Claimed : Copilot assigned to implement
-    Claimed --> InReview : Copilot opens a pull request
-
-    InReview --> NeedsWork : merge conflict
-    NeedsWork --> InReview : Copilot resolves on its branch
-    InReview --> NeedsHuman : can't be resolved automatically
-
-    InReview --> Done : pull request merged
-    NeedsHuman --> Approved : human resolves and re-approves
-    Done --> [*]
-    Filed --> [*] : closed / won't fix
+    [*] --> NeedsInfo
+    NeedsInfo --> Approved: maintainer approval
+    Approved --> Curating
+    Curating --> Ready
+    Curating --> NeedsHuman
+    Ready --> Claimed
+    Claimed --> Verifying
+    Verifying --> NeedsWork
+    NeedsWork --> Verifying
+    Verifying --> InReview
+    InReview --> Done: pull request merged
+    NeedsHuman --> Approved
 ```
 
-## Stages &amp; labels
+The human approval label is the trust gate. No model or coding agent acts before Puppets
+verifies who applied it and confirms that person's current repository permission.
 
-State is carried by a small set of `puppets:*` labels — one active at a time. The source
-issue is authoritative, and its active state is mirrored onto the linked pull request.
-Re-running the reconciler is always safe: it re-derives where each item is from its label
-and picks up where it left off. Maintainers only ever apply two labels by hand; the
-automation manages the rest.
+The issue is authoritative. Labels mirrored onto a pull request are visibility projections
+and cannot advance the issue.
 
-| Stage | Label | What happens | Applied by |
-|---|---|---|---|
-| Triage | `puppets:needs-info` | A lightweight, non-AI check looks for the essentials (description, steps to reproduce, version, logs). If something's missing, the item is labelled with a friendly comment; the label clears itself once the author supplies enough detail. | Automatic |
-| **Approval — human gate** | `puppets:approved` | A maintainer approves the item; the automation re-verifies the approver actually has write/triage access before anything proceeds. This gate is the heart of the security model. | **Maintainer** |
-| Curation | `puppets:curating` | GitHub Models screens for abuse and duplicates, evaluates feasibility, and suggests existing `type:*` or safe `area:*` labels. | Automatic |
-| Ready | `puppets:ready` | Curation passed; the issue is queued for admission under the per-run and in-flight limits. | Automatic |
-| Implementation | `puppets:claimed` | The Copilot coding agent is assigned, given any repository-specific guidance, writes the change, and opens a pull request. | Automatic |
-| In review | `puppets:in-review` | The issue and linked pull request carry the same state label. Blocked Copilot-triggered Actions are rerun, completed drafts are moved to ready-for-review once checks are green, and stale branches are updated. | Automatic |
-| In review (conflict) | `puppets:needs-work` | The pull request hit a merge conflict; the agent loops on its own branch to resolve it. | Automatic |
-| Escalation | `puppets:needs-human` | A genuine human decision is needed (e.g. a conflict the agent can't resolve). | Automatic — or a **maintainer** to push an item back |
-| Completion | `puppets:done` | The pull request merged under the configured merge policy; the item is marked done and the issue closes. | Automatic |
-| Opt-out | `puppets:no-auto` | Hard opt-out; Puppets leaves the item alone entirely. | Maintainer |
+## Overrides
 
-The only two a maintainer adds by hand: **`puppets:approved`** (go) and
-**`puppets:needs-human`** (stop / push back). Everything else is managed automatically.
+The framework supplies the defaults. A repository may override documented values using
+files read only from its default branch:
 
-## Repository setup
+- `config.json` for supported scalar settings;
+- `prompts/*.md` to replace a default step prompt; and
+- `lifecycle.json` as a validated keyed overlay on the default lifecycle.
 
-Puppets is **centrally driven**: the reconciler, credentials, and all lifecycle logic live
-in the controller repository. Managed repositories install **no Puppets workflow**.
+Invalid or unknown configuration fails before mutation. Overrides cannot disable approval
+verification, opt-out handling, trusted-branch loading, transition validation, or other
+security invariants.
 
-To add a managed repository:
+## Cost model
 
-- The **Copilot coding agent enabled** on the repo, so the reconciler can assign it (it
-  refuses to proceed on a repo where Copilot isn't assignable).
-- Add the repository to the controller's `repositories:` list.
-- Optionally, a **`.github/puppets/` guidance directory** with step-specific Markdown files
-  for the agent (see [below](#per-repo-guidance-optional)).
+- Use one staggered daily schedule per repository initially.
+- Process one new issue and at most two in-flight issues per run by default.
+- Perform deterministic filtering before model requests.
+- Never spend model tokens before human approval.
+- Keep event triggers optional until their extra workflow volume is justified.
+- Use GitHub-native `needs-human` views or one batched digest instead of private
+  notification runs for every transition.
 
-The current reconciler consumes `.github/puppets/implementation.md` and
-`.github/puppets/review.md`. GitHub Copilot's native instruction files are separate from
-Puppets configuration.
+Copilot and model requests remain separately metered; moving the workflow does not make
+those requests free.
 
-Everything else — triage, state, labels, and the digest — is driven centrally.
+## Build status
 
-### Per-repo guidance (optional)
-{: #per-repo-guidance-optional}
+The canonical architecture and migration plan live in
+[`docs/puppets-lifecycle.md`](../../puppets-lifecycle.md). Implementation is tracked in
+[automation issue #18](https://github.com/JeffSteinbok/automation/issues/18), with
+approval-gate regression coverage tracked in
+[issue #16](https://github.com/JeffSteinbok/automation/issues/16).
 
-Managed repos can carry step-specific guidance for the coding agent under
-`.github/puppets/`, read from the default branch. Two files are currently supported:
+The legacy private controller stays active only until the first public caller has been
+verified. It will then be disabled before additional live callers are enabled, preventing
+two controllers from acting on the same issue.
 
-- **`implementation.md`:** posted to the approved issue before Copilot is assigned.
-- **`review.md`:** combined with the controller's review prompt and posted to the linked
-  pull request when it enters `puppets:in-review`.
-
-Use it for repository-specific implementation guidance:
-
-- Build and test commands.
-- Coding conventions and generated files to avoid.
-- Dependency and pull-request expectations.
-
-The file is optional. Puppets applies three guardrails:
-
-- **Default branch only:** issue text and pull-request branches cannot replace trusted
-  instructions.
-- **20 KB maximum:** a conservative cap that prevents oversized issue comments and excessive
-  prompt context. It is intentionally well below GitHub's comment-size limit.
-- **Fail closed:** an unreadable, non-file, or oversized guidance path causes Puppets to skip
-  that repository for the run instead of silently ignoring bad instructions.
-
-Additional per-repository files will be introduced only with the stages that consume them.
-Deterministic triage does not use a guidance file.
-
-```markdown
-<!-- .github/puppets/implementation.md -->
-# Implementation guidance for the Copilot coding agent
-
-- Run the full test suite with `npm test` before opening a PR; keep it green.
-- Match the existing code style; do not add new dependencies without a clear need.
-- Never touch `src/generated/**` — it is produced by codegen.
-- Keep PRs focused on the linked issue; describe the change and how you verified it.
-```
-
-### That's the whole repository setup
-
-- **Managed repos:** enable the Copilot coding agent, and *optionally* add a
-  `.github/puppets/` guidance directory. Onboard by adding a line to the controller's
-  `repositories:` list; the label set is bootstrapped for you — there's no workflow to
-  install.
-
-## Run your own controller
-
-Puppets can be copied into a controller repository without creating or depending on a
-separate Puppets project.
-
-[**Explore the complete canonical example with syntax highlighting →**](explorer.html)
-
-Add the three workflow files into `.github/workflows/` — each opens in the explorer, where
-you can copy or download it:
-
-1. [**`puppets-controller.yml`**](explorer.html?file=puppets-controller.yml)
-   — your schedule and troupe configuration.
-2. [`puppets-reconcile.yml`](explorer.html?file=puppets-reconcile.yml) — the reusable
-   lifecycle engine.
-3. [`puppets-bootstrap-labels.yml`](explorer.html?file=puppets-bootstrap-labels.yml) — the
-   label bootstrapper used by the engine.
-
-Then add [`puppets-reconcile.js`](explorer.html?file=puppets-reconcile.js) into
-`.github/scripts/`. The workflow files contain only configuration and orchestration; the
-reconciliation implementation lives in this JavaScript module.
-
-Finally, copy the six controller-owned base prompts shown in the explorer into
-`.github/puppets/prompts/`:
-
-- `curation.md`
-- `implementation.md`
-- `review.md`
-- `conflict.md`
-- `needs-info.md`
-- `invalid-approval.md`
-
-Edit `puppets-controller.yml` with your GitHub owner, repository names, and the logins
-allowed to apply `puppets:approved`. Then create a `PUPPETS_TOKEN` Actions secret in the
-controller repository. Keep the controller filename as `puppets-controller.yml`, or update
-its `inbox_workflow_id` input to match the filename you choose.
-
-Use a fine-grained personal access token that can access the controller and every managed
-repository. It needs:
-
-- **Actions: read** on the controller repository, to determine the previous reconciliation
-  run for inbox notifications.
-- **Actions: read and write** on managed repositories, to rerun Copilot-triggered checks
-  that GitHub leaves in `action_required`.
-- **Contents: read** on managed repositories, to read the default branch and optional
-  `.github/puppets/implementation.md` and `.github/puppets/review.md`.
-- **Issues: read and write** on managed repositories, to inspect, label, comment, and assign
-  issues.
-- **Pull requests: read and write** on managed repositories, to track pull requests, update
-  branches, and move completed drafts to ready-for-review.
-
-Enable the Copilot coding agent in each managed repository, commit the workflows, engine,
-and prompt files, then run
-**Puppets Lifecycle** manually with `dry_run` enabled before relying on the schedule.
-Notifications are intentionally deployment-specific: the reusable engine exposes
-`waiting_count` and `waiting_message` outputs so the controller can send them through any
-notifier.
-
-The canonical controller runs hourly, admits at most one new issue per repository per pass,
-and caps each repository at two active Puppets issues. These values can be adjusted through
-`max_issues_per_repo` and `max_in_flight_per_repo`.
-
-## Staying informed
-
-Puppets never spams. Instead, it posts a periodic digest that surfaces exactly what needs a
-human:
-
-- **New issues to review** — items filed since the last run that haven't been approved or
-  dismissed yet, so nothing slips through unseen.
-- **Waiting on you** — items parked on a human decision (`puppets:needs-human`).
-
-## Roadmap
-
-Puppets today is deliberately a **single central reconciler that polls on a schedule** — one
-place holds the configuration and credentials, every managed repository stays completely free
-of Puppets-specific workflow files, and re-running is always safe because state is re-derived
-from labels. The hourly schedule keeps the maximum polling delay bounded without requiring
-webhooks in every repository.
-
-The natural next step is an **optional real-time trigger** — a lightweight, opt-in hook so
-that approving an issue (or a pull request opening or its checks completing) kicks off a
-reconciliation within seconds, while the scheduled reconciler stays on as the safety net that
-recovers any missed event and runs the time-based passes. Poll-first was chosen on purpose:
-it is simpler, self-healing, and keeps every repository zero-footprint; real-time reaction is
-an enhancement layered on top rather than a replacement.
-
-## Security posture
-
-- **Untrusted input everywhere.** An issue's title and body are treated as data, never as
-  commands the automation should follow.
-- **Approval is verified.** Applying the approval label isn't enough on its own — the
-  automation checks that the approver genuinely has the access to do so.
-- **Opt-out is absolute.** `puppets:no-auto` takes an item completely out of scope.
+The public `JeffSteinbok/puppets` repository publishes the Puppets documentation through
+GitHub Pages. A custom domain and `CNAME` will be added later after Jeff completes the DNS
+configuration.
